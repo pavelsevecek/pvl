@@ -32,6 +32,8 @@ add_executable(pvl
     TriangleMesh.hpp
     Refinement.hpp
     Simplification.hpp
+    QuadricDecimator.hpp
+    MemorylessDecimator.hpp
     Range.hpp
     Graph.hpp Graph.inl.hpp
     UniformGrid.hpp

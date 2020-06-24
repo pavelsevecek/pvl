@@ -71,12 +71,12 @@ public:
 
     template <typename Vec, typename Index>
     PlyWriter& operator<<(const TriangleMesh<Vec, Index>& mesh) {
-        for (Index i = 0; i < mesh.numVertices(); ++i) {
+        for (Index i = 0; i < Index(mesh.numVertices()); ++i) {
             const Vec& p = mesh.points[i];
             out_ << p[0] << " " << p[1] << " " << p[2] << " 0 0 0\n";
         }
         std::size_t validCnt = 0;
-        for (Index i = 0; i < mesh.numFaces(); ++i) {
+        for (Index i = 0; i < Index(mesh.numFaces()); ++i) {
             if (!mesh.valid(FaceHandle(i))) {
                 continue;
             }

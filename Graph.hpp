@@ -655,18 +655,22 @@ public:
     }
 
     struct CollapseContext {
-        HalfEdgeHandle edge; // halfedge from "remaining" to "removed"
+        HalfEdgeHandle edge;
         VertexHandle removed;
         VertexHandle remaining;
         FaceHandle left;  // left of the halfedge
         FaceHandle right; // right of the halfedge
 
-        CollapseContext(const Graph& graph, const HalfEdgeHandle heh)
-            : edge(heh) {
+        CollapseContext(const Graph& graph, const EdgeHandle eh)
+            : edge(graph.halfEdge(eh)) {
             removed = graph.to(edge);
             remaining = graph.from(edge);
             left = graph.left(edge);
-            right = graph.right(edge);
+            if (!graph.boundary(edge)) {
+                right = graph.right(edge);
+            } else {
+                right = FaceHandle(-1);
+            }
         }
     };
 
@@ -675,7 +679,7 @@ public:
     void collapse(HalfEdgeHandle heh) {
         PVL_ASSERT(collapseAllowed(heh));
         // check();
-        CollapseContext context(*this, heh);
+        CollapseContext context(*this, edge(heh));
         HalfEdgeHandle oheh = opposite(heh);
 
         /*if (vertices_[context.remaining].edge == heh) {
@@ -762,12 +766,14 @@ public:
         std::vector<VertexHandle> is;
         std::set_intersection(
             ring1.begin(), ring1.end(), ring2.begin(), ring2.end(), std::back_inserter(is));
-        if (is.size() != 2) {
-            return false;
-        }
-        VertexHandle vl = to(next(eh));
-        VertexHandle vr = to(next(opposite(eh)));
-        return ((is[0] == vl && is[1] == vr) || (is[1] == vl && is[0] == vr));
+        PVL_ASSERT(is.size() >= 2);
+        return is.size() == 2;
+        // if (is.size() != 2) {
+        //  return false;
+        //}
+        // VertexHandle vl = to(next(eh));
+        // VertexHandle vr = to(next(opposite(eh)));
+        // return ((is[0] == vl && is[1] == vr) || (is[1] == vl && is[0] == vr));
     }
 
     void remove(FaceHandle fh) {
@@ -797,8 +803,8 @@ public:
         return halfEdges_[heh].left == -1;
     }
 
-    bool removed(EdgeHandle heh) {
-        return halfEdges_[heh].left == -1;
+    bool removed(EdgeHandle eh) {
+        return removed(halfEdge(eh));
     }
 
     void collectGarbage() {}

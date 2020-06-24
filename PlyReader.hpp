@@ -20,7 +20,8 @@ public:
         std::string line;
         // std::string countTag("element vertex ");
         while (std::getline(in_, line)) {
-            /*   if (line.size() > countTag.size() && line.substr(0, countTag.size()) == countTag) {
+            /*   if (line.size() > countTag.size() && line.substr(0, countTag.size()) ==
+               countTag) {
 
                }*/
             if (line == "end_header") {
@@ -42,15 +43,15 @@ public:
         std::size_t numVertices = 0;
         std::size_t numFaces = 0;
         while (std::getline(in_, line)) {
-            sscanf(line.c_str(), "element vertex %d", &numVertices);
-            sscanf(line.c_str(), "element face %d", &numFaces);
+            sscanf(line.c_str(), "element vertex %zu", &numVertices);
+            sscanf(line.c_str(), "element face %zu", &numFaces);
             if (line == "end_header") {
                 break;
             }
         }
         TriangleMesh<Vec3f, int> mesh;
-        std::cout << "Loading mesh with " << numVertices << " vertices and " << numFaces << " faces"
-                  << std::endl;
+        std::cout << "Loading mesh with " << numVertices << " vertices and " << numFaces
+                  << " faces" << std::endl;
         for (std::size_t i = 0; i < numVertices; ++i) {
             std::getline(in_, line);
             std::stringstream ss(line);

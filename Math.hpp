@@ -31,11 +31,16 @@ struct Pow<T, 2> {
         return value * value;
     }
 };
-
 template <typename T>
 struct Pow<T, 3> {
     T operator()(const T& value) {
         return value * value * value;
+    }
+};
+template <typename T>
+struct Pow<T, 4> {
+    T operator()(const T& value) {
+        return sqr(value * value);
     }
 };
 
