@@ -22,13 +22,13 @@ public:
     /// this should be called only once for a pair of particles as there is expensive division
     /// \todo Potentially precompute the 3rd power ...
     Float value(const Vec& r, const Float h) const noexcept {
-        ASSERT(h > 0.f);
+        PVL_ASSERT(h > 0.f);
         const Float hInv = 1.f / h;
         return pow<Dim>(hInv) * impl().valueImpl(normSqr(r) * sqr(hInv));
     }
 
     Vec grad(const Vec& r, const Float h) const noexcept {
-        ASSERT(h > 0.f);
+        PVL_ASSERT(h > 0.f);
         const Float hInv = 1.f / h;
         return r * pow<Dim + 2>(hInv) * impl().gradImpl(normSqr(r) * sqr(hInv));
     }
@@ -89,7 +89,7 @@ public:
     LutKernel(TKernel&& source) {
         rad = source.radius();
 
-        ASSERT(rad > 0.f);
+        PVL_ASSERT(rad > 0.f);
         const Float radInvSqr = 1.f / (rad * rad);
         qSqrToIdx = Float(NEntries) * radInvSqr;
         for (int i = 0; i < NEntries; ++i) {
@@ -109,8 +109,8 @@ public:
     }
 
     Float valueImpl(const Float qSqr) const noexcept {
-        ASSERT(qSqr >= 0.f);
-        ASSERT(initialized());
+        PVL_ASSERT(qSqr >= 0.f);
+        PVL_ASSERT(initialized());
         if (qSqr >= sqr(rad)) {
             // outside of kernel support
             return 0.f;
@@ -118,27 +118,27 @@ public:
         // linear interpolation of stored values
         const Float floatIdx = qSqrToIdx * qSqr;
         const int idx1 = Size(floatIdx);
-        ASSERT(idx1 < NEntries);
+        PVL_ASSERT(idx1 < NEntries);
         const int idx2 = idx1 + 1;
         const Float ratio = floatIdx - Float(idx1);
-        ASSERT(ratio >= 0.f && ratio < 1.f);
+        PVL_ASSERT(ratio >= 0.f && ratio < 1.f);
 
         return values[idx1] * (1.f - ratio) + (int(idx2 < NEntries) * values[idx2]) * ratio;
     }
 
     Float gradImpl(const Float qSqr) const noexcept {
-        ASSERT(qSqr >= 0.f);
-        ASSERT(initialized());
+        PVL_ASSERT(qSqr >= 0.f);
+        PVL_ASSERT(initialized());
         if (qSqr >= sqr(rad)) {
             // outside of kernel support
             return 0.f;
         }
         const Float floatIdx = qSqrToIdx * qSqr;
         const int idx1 = Size(floatIdx);
-        ASSERT(unsigned(idx1) < unsigned(NEntries));
+        PVL_ASSERT(unsigned(idx1) < unsigned(NEntries));
         const int idx2 = idx1 + 1;
         const Float ratio = floatIdx - Float(idx1);
-        ASSERT(ratio >= 0.f && ratio < 1.f);
+        PVL_ASSERT(ratio >= 0.f && ratio < 1.f);
 
         return grads[idx1] * (1.f - ratio) + (int(idx2 < NEntries) * grads[idx2]) * ratio;
     }
@@ -159,7 +159,7 @@ public:
     // template <bool TApprox = false>
     Float valueImpl(const Float qSqr) const {
         const Float q = sqrt(qSqr);
-        ASSERT(q >= 0);
+        PVL_ASSERT(q >= 0);
         if (q < 1.f) {
             return normalization[Dim - 1] * (0.25f * pow<3>(2.f - q) - pow<3>(1.f - q));
         }

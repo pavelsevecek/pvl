@@ -28,16 +28,13 @@ inline Vertex::IteratorBase& Vertex::IteratorBase::operator++() {
     } else {
         status_ = Status::END;
     }
-    ASSERT(eh_ != HalfEdgeHandle(-1));
-    /*  std::cout << "++ - " << eh_ << ", status = "
-                << (status_ == Status::BEGIN ? "begin" : (status_ == Status::ITERS ? "iters" : "end"))
-                << std::endl;
-  */
+    PVL_ASSERT(eh_ != HalfEdgeHandle(-1));
     return *this;
 }
 
 inline bool Vertex::IteratorBase::operator!=(const IteratorBase& other) const {
     /// \todo proper
+    // std::cout << "Comparing " << eh_ << " and " << other.eh_ << std::endl;
     return (status_ != Status::END || other.status_ != Status::END) &&
            (eh_ != other.eh_ || status_ == Status::BEGIN);
 }
@@ -53,6 +50,28 @@ inline VertexHandle Vertex::VertexIterator::operator*() const {
 inline FaceHandle Vertex::FaceIterator::operator*() const {
     return graph_.left(eh_);
 }
+
+inline Vertex::EdgeIterator& Vertex::EdgeIterator::operator++() {
+    if (status_ == Status::ITERS && graph_.boundary(eh_)) {
+        // already reached the end
+        status_ = Status::END;
+    } else {
+        const HalfEdgeHandle prev = graph_.prev(eh_);
+        if (!graph_.boundary(prev)) {
+            eh_ = graph_.opposite(prev);
+        } else {
+            eh_ = prev;
+        }
+        status_ = Status::ITERS;
+    }
+    PVL_ASSERT(eh_ != HalfEdgeHandle(-1));
+    return *this;
+}
+
+inline EdgeHandle Vertex::EdgeIterator::operator*() const {
+    return graph_.edge(eh_);
+}
+
 
 inline Face::IteratorBase::IteratorBase(const Graph& graph, FaceHandle fh)
     : graph_(graph) {

@@ -26,6 +26,9 @@ public:
         out << "property float x\n";
         out << "property float y\n";
         out << "property float z\n";
+        out << "property float nx\n";
+        out << "property float ny\n";
+        out << "property float nz\n"; /// \todo
         out << "element face ";
         facePos_ = out.tellp();
         out << "              \n";
@@ -38,7 +41,9 @@ public:
         for (int i = 0; i < Dim; ++i) {
             out_ << p[i] << " ";
         }
-        out_ << "\n";
+        if (Dim == 3) {
+            out_ << "0 0 0\n";
+        }
         ++vertexCnt_;
         return *this;
     }
@@ -51,18 +56,36 @@ public:
         return *this;
     }
 
+    template <typename T, int Dim>
+    PlyWriter& write(const std::vector<Vector<T, Dim>>& cloud,
+        const std::vector<Vector<T, Dim>>& normals) {
+        for (std::size_t i = 0; i < cloud.size(); ++i) {
+            const auto& p = cloud[i];
+            const auto& n = normals[i];
+            out_ << p[0] << " " << p[1] << " " << p[2] << " " << n[0] << " " << n[1] << " "
+                 << n[2] << "\n";
+        }
+        vertexCnt_ += cloud.size();
+        return *this;
+    }
+
     template <typename Vec, typename Index>
     PlyWriter& operator<<(const TriangleMesh<Vec, Index>& mesh) {
         for (Index i = 0; i < mesh.numVertices(); ++i) {
             const Vec& p = mesh.points[i];
-            out_ << p[0] << " " << p[1] << " " << p[2] << "\n";
+            out_ << p[0] << " " << p[1] << " " << p[2] << " 0 0 0\n";
         }
+        std::size_t validCnt = 0;
         for (Index i = 0; i < mesh.numFaces(); ++i) {
+            if (!mesh.valid(FaceHandle(i))) {
+                continue;
+            }
             auto f = mesh.faceIndices(FaceHandle(i));
             out_ << "3 " << f[0] << " " << f[1] << " " << f[2] << "\n";
+            validCnt++;
         }
         vertexCnt_ += mesh.numVertices();
-        faceCnt_ += mesh.numFaces();
+        faceCnt_ += validCnt;
         return *this;
     }
 

@@ -21,25 +21,25 @@ public:
         : rows_{ r1, r2, r3, r4 } {}
 
     T& operator()(const int c, const int r) {
-        ASSERT(r < Rows);
-        ASSERT(c < Cols);
+        PVL_ASSERT(r < Rows);
+        PVL_ASSERT(c < Cols);
         return rows_[r][c];
     }
 
     const T& operator()(const int c, const int r) const {
-        ASSERT(r < Rows);
-        ASSERT(c < Cols);
+        PVL_ASSERT(r < Rows);
+        PVL_ASSERT(c < Cols);
         return rows_[r][c];
     }
 
 
     const Vector<T, Cols>& row(const int idx) const {
-        ASSERT(idx < Rows);
+        PVL_ASSERT(idx < Rows);
         return rows_[idx];
     }
 
     Vector<T, Rows> column(const int idx) const {
-        ASSERT(idx < Cols);
+        PVL_ASSERT(idx < Cols);
         Vector<T, Rows> col;
         for (int i = 0; i < Rows; ++i) {
             col[i] = row(i)[idx];
@@ -55,6 +55,10 @@ public:
         return res;
     }
 
+    static Matrix null() {
+        return Matrix(Vector<T, Cols>(0), Vector<T, Cols>(0), Vector<T, Cols>(0));
+    }
+
     static Matrix identity() {
         Matrix m;
         for (int j = 0; j < Rows; ++j) {
@@ -63,6 +67,36 @@ public:
             }
         }
         return m;
+    }
+
+    Matrix operator+(const Matrix& other) const {
+        Matrix m;
+        for (int j = 0; j < Rows; ++j) {
+            for (int i = 0; i < Cols; ++i) {
+                m(i, j) = (*this)(i, j) + other(i, j);
+            }
+        }
+        return m;
+    }
+
+    Matrix operator-(const Matrix& other) const {
+        Matrix m;
+        for (int j = 0; j < Rows; ++j) {
+            for (int i = 0; i < Cols; ++i) {
+                m(i, j) = (*this)(i, j) - other(i, j);
+            }
+        }
+        return m;
+    }
+
+    Matrix& operator+=(const Matrix& other) {
+        *this = *this + other;
+        return *this;
+    }
+
+    Matrix& operator-=(const Matrix& other) {
+        *this = *this - other;
+        return *this;
     }
 
     template <int N>
@@ -79,6 +113,16 @@ public:
 
 using Mat33f = Matrix<float, 3, 3>;
 using Mat44f = Matrix<float, 4, 4>;
+
+inline Mat33f outerProd(const Vec3f& v1, const Vec3f& v2) {
+    Mat33f res;
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            res(i, j) = v1[i] * v2[j];
+        }
+    }
+    return res;
+}
 
 inline Mat33f invert(const Mat33f& m) {
     double det = m(0, 0) * (m(1, 1) * m(2, 2) - m(2, 1) * m(1, 2)) -

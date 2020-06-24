@@ -11,11 +11,11 @@ class Vector {
     std::array<T, Dim> values_;
 
 public:
-    using Type = T;
+    using Float = T;
 
     Vector() = default;
 
-    Vector(const T value) {
+    explicit Vector(const T value) {
         for (int i = 0; i < Dim; ++i) {
             values_[i] = value;
         }
@@ -31,12 +31,12 @@ public:
         : values_{ x, y, z, w } {}
 
     T& operator[](const int idx) {
-        ASSERT(unsigned(idx) < unsigned(Dim), idx, Dim);
+        PVL_ASSERT(unsigned(idx) < unsigned(Dim), idx, Dim);
         return values_[idx];
     }
 
     const T& operator[](const int idx) const {
-        ASSERT(unsigned(idx) < unsigned(Dim), idx, Dim);
+        PVL_ASSERT(unsigned(idx) < unsigned(Dim), idx, Dim);
         return values_[idx];
     }
 
@@ -68,6 +68,16 @@ public:
 
     Vector& operator-=(const Vector& other) {
         *this = *this - other;
+        return *this;
+    }
+
+    Vector& operator*=(const T value) {
+        *this = *this * value;
+        return *this;
+    }
+
+    Vector& operator/=(const T value) {
+        *this = *this / value;
         return *this;
     }
 

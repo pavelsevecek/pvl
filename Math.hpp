@@ -11,6 +11,16 @@ template <typename T>
 T sqr(const T& value) {
     return value * value;
 }
+template <typename T>
+int sign(const T& value) {
+    if (value > 0) {
+        return 1;
+    } else if (value < 0) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
 
 template <typename T, int N>
 struct Pow;

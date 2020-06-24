@@ -2,4 +2,4 @@
 
 #include <cassert>
 
-#define ASSERT(x, ...) assert(x)
+#define PVL_ASSERT(x, ...) assert(x)

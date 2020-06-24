@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Matrix.hpp"
 
 namespace Pvl {
@@ -39,7 +41,7 @@ int dsvd(float (&a)[3][3], float* w, float (&v)[3][3]) {
     double anorm = 0.0, g = 0.0, scale = 0.0;
     double* rv1;
 
-    ASSERT(m >= n, "#rows must be > #cols");
+    PVL_ASSERT(m >= n, "#rows must be > #cols");
 
     rv1 = (double*)malloc((unsigned int)n * sizeof(double));
 
@@ -57,7 +59,7 @@ int dsvd(float (&a)[3][3], float* w, float (&v)[3][3]) {
                     a[k][i] = (float)((double)a[k][i] / scale);
                     s += ((double)a[k][i] * (double)a[k][i]);
                 }
-                ASSERT(s >= 0., s);
+                PVL_ASSERT(s >= 0., s);
                 f = (double)a[i][i];
                 g = -SIGN(sqrt(s), f);
                 h = f * g - s;
@@ -87,7 +89,7 @@ int dsvd(float (&a)[3][3], float* w, float (&v)[3][3]) {
                     a[i][k] = (float)((double)a[i][k] / scale);
                     s += ((double)a[i][k] * (double)a[i][k]);
                 }
-                ASSERT(s >= 0., s);
+                PVL_ASSERT(s >= 0., s);
                 f = (double)a[i][l];
                 g = -SIGN(sqrt(s), f);
                 h = f * g - s;
@@ -201,7 +203,7 @@ int dsvd(float (&a)[3][3], float* w, float (&v)[3][3]) {
                 }
                 break;
             }
-            ASSERT(its < 30, "No convergence after 30,000! iterations ");
+            PVL_ASSERT(its < 30, "No convergence after 30,000! iterations ");
 
 
             /* shift from bottom 2 x 2 minor */
@@ -264,16 +266,14 @@ int dsvd(float (&a)[3][3], float* w, float (&v)[3][3]) {
 
 template <typename T>
 Svd<T> singularValueDecomposition(const Matrix<T, 3, 3>& t) {
-    Vector<T, 3> diag = t.diagonal();
-    Vector<T, 3> off = t.offDiagonal();
     float V[3][3];
     float S[3];
 
     // clang-format off
     float U[3][3] = {
-        { float(diag[0]), float(off[0]),  float(off[1]) },
-        { float(off[0]),  float(diag[1]), float(off[2]) },
-        { float(off[1]),  float(off[2]),  float(diag[2]) },
+        { float(t(0, 0)), float(t(1, 0)), float(t(2, 0)) },
+        { float(t(0, 1)), float(t(1, 1)), float(t(2, 1)) },
+        { float(t(0, 2)), float(t(1, 2)), float(t(2, 2)) },
     };
 
     dsvd(U, S, V);

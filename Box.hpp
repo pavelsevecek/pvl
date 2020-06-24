@@ -4,47 +4,49 @@
 
 namespace Pvl {
 
-template <typename T, int Dim>
+template <typename Vec>
 class BoundingBox {
-    Vector<T, Dim> lower_;
-    Vector<T, Dim> upper_;
+    Vec lower_;
+    Vec upper_;
 
 public:
-    BoundingBox()
-        : lower_(std::numeric_limits<T>::max())
-        , upper_(std::numeric_limits<T>::lowest()) {}
+    using Vector = Vec;
+    using Float = typename Vec::Float;
 
-    BoundingBox(const Vector<T, Dim>& lower, const Vector<T, Dim>& upper)
+    BoundingBox()
+        : lower_(std::numeric_limits<Float>::max())
+        , upper_(std::numeric_limits<Float>::lowest()) {}
+
+    BoundingBox(const Vec& lower, const Vec& upper)
         : lower_(lower)
         , upper_(upper) {}
 
-    Vector<T, Dim>& lower() {
+    Vec& lower() {
         return lower_;
     }
 
-    const Vector<T, Dim>& lower() const {
+    const Vec& lower() const {
         return lower_;
     }
 
-    Vector<T, Dim>& upper() {
+    Vec& upper() {
         return upper_;
     }
 
-    const Vector<T, Dim>& upper() const {
+    const Vec& upper() const {
         return upper_;
     }
 
-    Vector<T, Dim> size() const {
+    Vec size() const {
         return upper_ - lower_;
     }
 
-    Vector<T, Dim> center() const {
-        return T(0.5) * (upper_ + lower_);
+    Vec center() const {
+        return Float(0.5) * (upper_ + lower_);
     }
 
-
-    bool contains(const Vector<T, Dim>& p) const {
-        for (int i = 0; i < Dim; ++i) {
+    bool contains(const Vec& p) const {
+        for (int i = 0; i < Vec::size(); ++i) {
             if (p[i] < lower_[i] || p[i] > upper_[i]) {
                 return false;
             }
@@ -52,26 +54,26 @@ public:
         return true;
     }
 
-    void extend(const Vector<T, Dim>& p) {
+    void extend(const Vec& p) {
         lower_ = min(lower_, p);
         upper_ = max(upper_, p);
     }
 };
 
+using Box3f = BoundingBox<Vec3f>;
+
 /// \brief Splits the box along given coordinate.
 ///
 /// The splitting plane must pass through the box.
-template <typename T, int Dim>
-std::pair<BoundingBox<T, Dim>, BoundingBox<T, Dim>> splitBox(const BoundingBox<T, Dim>& box,
-    const int dim,
-    const T x) {
+template <typename Box, typename T>
+std::pair<Box, Box> splitBox(const Box& box, const int dim, const T x) {
     /*ASSERT(isValid());*/
-    ASSERT(dim < Dim);
-    ASSERT(x >= box.lower()[dim] && x <= box.upper()[dim]);
-    BoundingBox<T, Dim> b1 = box;
-    BoundingBox<T, Dim> b2 = box;
-    b1.lower()[dim] = x;
-    b2.upper()[dim] = x;
+    PVL_ASSERT(dim < Box::Vector::size());
+    PVL_ASSERT(x >= box.lower()[dim] && x <= box.upper()[dim]);
+    Box b1 = box;
+    Box b2 = box;
+    b1.upper()[dim] = x;
+    b2.lower()[dim] = x;
     return std::make_pair(b1, b2);
 }
 
