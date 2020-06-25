@@ -20,6 +20,7 @@ add_executable(pvl
     Utils.hpp
     Assert.hpp
     Math.hpp
+    Optional.hpp
     Vector.hpp
     Matrix.hpp
     Svd.hpp

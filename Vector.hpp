@@ -151,7 +151,7 @@ using Vec3i = Vector<int, 3>;
 using Vec4i = Vector<int, 4>;
 
 template <typename T, int Dim>
-T dot(const Vector<T, Dim>& v1, const Vector<T, Dim>& v2) {
+T dotProd(const Vector<T, Dim>& v1, const Vector<T, Dim>& v2) {
     T res = 0.f;
     for (int i = 0; i < Dim; ++i) {
         res += v1[i] * v2[i];
@@ -161,7 +161,7 @@ T dot(const Vector<T, Dim>& v1, const Vector<T, Dim>& v2) {
 
 template <typename T, int Dim>
 T normSqr(const Vector<T, Dim>& v) {
-    return dot(v, v);
+    return dotProd(v, v);
 }
 
 template <typename T, int Dim>
@@ -183,8 +183,10 @@ Vector<T, Dim> normalize(const Vector<T, Dim>& v) {
     return v / norm(v);
 }
 
-inline Vec3f cross(const Vec3f& v1, const Vec3f& v2) {
-    return Vec3f(v1[1] * v2[2] - v1[2] * v2[1], v1[2] * v2[0] - v1[0] * v2[2], v1[0] * v2[1] - v1[1] * v2[0]);
+inline Vec3f crossProd(const Vec3f& v1, const Vec3f& v2) {
+    return Vec3f(v1[1] * v2[2] - v1[2] * v2[1],
+        v1[2] * v2[0] - v1[0] * v2[2],
+        v1[0] * v2[1] - v1[1] * v2[0]);
 }
 
 template <typename T1, typename T2, int Dim>
@@ -253,6 +255,11 @@ Vector<T, Dim> sqr(const Vector<T, Dim>& v) {
 
 inline Vec4f homogeneous(const Vec3f& v) {
     return Vec4f(v[0], v[1], v[2], 1.f);
+}
+
+inline Vec3f euclidean(const Vec4f& v) {
+    PVL_ASSERT(v[3] != 0);
+    return Vec3f(v[0] / v[3], v[1] / v[3], v[2] / v[3]);
 }
 
 } // namespace Pvl

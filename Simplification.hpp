@@ -1,30 +1,77 @@
 #pragma once
 
+#include "Optional.hpp"
 #include "PlyWriter.hpp"
 #include "TriangleMesh.hpp"
 #include <queue>
 
 namespace Pvl {
 
-template <typename Vec>
+template <typename Mesh>
 struct SimpleDecimator {
-    template <typename Mesh>
-    typename Vec::Float cost(const Mesh& mesh, const Graph::CollapseContext& context) const {
-        Vec v1 = mesh.point(context.remaining);
-        Vec v2 = mesh.point(context.removed);
+    using Point = typename Mesh::Point;
+
+    typename Point::Float cost(const Mesh& mesh, const Graph::CollapseContext& context) const {
+        Point v1 = mesh.point(context.remaining);
+        Point v2 = mesh.point(context.removed);
         return normSqr(v1 - v2);
     }
 
-    template <typename Mesh>
-    Vec placement(const Mesh& mesh, const Graph::CollapseContext& context) const {
-        Vec v1 = mesh.point(context.remaining);
-        Vec v2 = mesh.point(context.removed);
+    Optional<Point> placement(const Mesh& mesh, const Graph::CollapseContext& context) const {
+        Point v1 = mesh.point(context.remaining);
+        Point v2 = mesh.point(context.removed);
         return 0.5 * (v1 + v2);
     }
 
-    template <typename Mesh>
     void postprocess(const Mesh&, const Graph::CollapseContext&) const {}
 };
+
+template <typename Decimator>
+struct PreventFaceFoldDecorator : public Decimator {
+    using Point = typename Decimator::Point;
+
+    using Decimator::Decimator;
+
+    template <typename Mesh>
+    Optional<Point> placement(Mesh& mesh, const Graph::CollapseContext& context) const {
+        Optional<Point> target = Decimator::placement(mesh, context);
+        if (!target) {
+            return NONE;
+        }
+
+        std::map<FaceHandle, Point> faces;
+        for (FaceHandle fh : mesh.faceRing(context.remaining)) {
+            if (fh != context.left && fh != context.right) {
+                faces[fh] = mesh.normal(fh);
+            }
+        }
+        for (FaceHandle fh : mesh.faceRing(context.removed)) {
+            if (fh != context.left && fh != context.right) {
+                faces[fh] = mesh.normal(fh);
+            }
+        }
+        const Point p1 = mesh.points[context.remaining];
+        const Point p2 = mesh.points[context.removed];
+
+        // simulate collapse
+        mesh.points[context.remaining] = mesh.points[context.removed] = target.value();
+
+        for (const auto& p : faces) {
+            const Point normal = mesh.normal(p.first);
+            if (dotProd(normal, p.second) < 0) {
+                // revert collapse
+                mesh.points[context.remaining] = p1;
+                mesh.points[context.removed] = p2;
+                return NONE;
+            }
+        }
+        // revert collapse
+        mesh.points[context.remaining] = p1;
+        mesh.points[context.removed] = p2;
+        return target;
+    }
+};
+
 
 class EdgeCountStop {
     std::size_t count_;
@@ -87,6 +134,7 @@ public:
     }
 };
 
+/*
 template <typename Vec, typename Index>
 void savePatch(const TriangleMesh<Vec, Index>& mesh, HalfEdgeHandle eh) {
     TriangleMesh<Vec, Index> patch;
@@ -145,26 +193,20 @@ void savePatch(const TriangleMesh<Vec, Index>& mesh, HalfEdgeHandle eh) {
         out << p[0] << " " << p[1] << " " << p[2] << " " << c[0] << " " << c[1] << " " << c[2]
             << "\n";
     }
-}
+}*/
 
 /// \todo add stop to decimator? (cost stop)
 template <typename Vec, typename Index, typename Decimator, typename Stop>
 void simplify(TriangleMesh<Vec, Index>& mesh, Decimator& decimator, const Stop& stop) {
+    using Float = typename Vec::Float;
+
     CollapseQueue queue;
     for (EdgeHandle eh : mesh.edgeRange()) {
-        float cost = decimator.cost(mesh, Graph::CollapseContext(mesh, eh));
-        queue.insert(eh, cost);
-    }
-
-    /*for (HalfEdgeHandle heh : mesh.halfEdgeRange()) {
-        if (!mesh.valid(heh)) {
-            continue;
+        Optional<Float> cost = decimator.cost(mesh, Graph::CollapseContext(mesh, eh));
+        if (cost) {
+            queue.insert(eh, cost.value());
         }
-        EdgeHandle eh = mesh.edge(heh);
-        HalfEdgeHandle h = mesh.halfEdge(eh);
-        float cost = decimator.cost(mesh, Graph::CollapseContext(mesh, heh));
-        queue.update(h, cost);
-    }*/
+    }
 
     std::size_t cnt = 0;
     EdgeHandle collapsedEdge;
@@ -174,9 +216,13 @@ void simplify(TriangleMesh<Vec, Index>& mesh, Decimator& decimator, const Stop& 
         if (mesh.removed(collapsedEdge)) {
             continue;
         }
-        Graph::CollapseContext context(mesh, collapsedEdge);
-        if (mesh.collapseAllowed(context.edge)) {
-            Vec target = decimator.placement(mesh, context);
+        if (mesh.collapseAllowed(collapsedEdge)) {
+            Graph::CollapseContext context(mesh, collapsedEdge);
+            Optional<Vec> target = decimator.placement(mesh, context);
+            if (!target) {
+                // collapse not allowed
+                continue;
+            }
             /*std::vector<HalfEdgeHandle> ring;
             for (HalfEdgeHandle eh : mesh.halfEdgeRing(mesh.from(collapsedEdge))) {
                 ring.push_back(eh);
@@ -198,8 +244,8 @@ void simplify(TriangleMesh<Vec, Index>& mesh, Decimator& decimator, const Stop& 
                     queue.remove(mesh.edge(vh, context.removed));
                 }
             }
-            std::cout << "# " << cnt << " Collapsing " << mesh.to(context.edge) << " into "
-                      << mesh.from(context.edge) << ", cost = " << c << std::endl;
+            /*std::cout << "# " << cnt << " Collapsing " << mesh.to(context.edge) << " into "
+                      << mesh.from(context.edge) << ", cost = " << c << std::endl;*/
             /*std::cout << "ring:\n";
             for (HalfEdgeHandle eh : ring) {
                 std::cout << mesh.from(eh) << "-" << mesh.to(eh) << "\n";
@@ -211,7 +257,7 @@ void simplify(TriangleMesh<Vec, Index>& mesh, Decimator& decimator, const Stop& 
             }
             std::cout << std::endl;
              savePatch(mesh, collapsedEdge);*/
-            mesh.collapse(context.edge, target);
+            mesh.collapse(collapsedEdge, target.value());
             for (VertexHandle vh : ring) {
                 EdgeHandle eh = mesh.edge(context.remaining, vh);
                 PVL_ASSERT(!mesh.removed(eh));
@@ -219,8 +265,10 @@ void simplify(TriangleMesh<Vec, Index>& mesh, Decimator& decimator, const Stop& 
 
                 // HalEdgeHandle heh1 = mesh.halfEdge(mesh.edge(heh));
                 // PVL_ASSERT(!mesh.removed(heh1));
-                float cost = decimator.cost(mesh, Graph::CollapseContext(mesh, eh));
-                queue.insert(eh, cost);
+                Optional<Float> cost = decimator.cost(mesh, Graph::CollapseContext(mesh, eh));
+                if (cost) {
+                    queue.insert(eh, cost.value());
+                }
             }
             decimator.postprocess(mesh, context);
             if (stop(cnt++)) {

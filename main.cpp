@@ -2,8 +2,10 @@
 #include "Graph.hpp"
 #include "KdTree.hpp"
 #include "Kernels.hpp"
+#include "MemorylessDecimator.hpp"
 #include "PlyReader.hpp"
 #include "PlyWriter.hpp"
+#include "QuadricDecimator.hpp"
 #include "Refinement.hpp"
 #include "Simplification.hpp"
 #include "Svd.hpp"
@@ -127,7 +129,7 @@ TEST_CASE("collapse allowed", "[simplify]") {
 
     HalfEdgeHandle eh = graph.halfEdge(vA, vB);
     REQUIRE_FALSE(graph.removed(eh));
-    REQUIRE_FALSE(graph.collapseAllowed(eh));
+    REQUIRE_FALSE(graph.collapseAllowed(graph.edge(eh)));
 }
 
 VertexHandle operator"" _vh(unsigned long long int i) {
@@ -146,14 +148,17 @@ struct SimpleGraphFixture {
     Graph graph;
     VertexHandle vA;
     VertexHandle vB;
-    std::array<VertexHandle, 8> vs;
+    std::set<VertexHandle> ring;
+
 
     SimpleGraphFixture() {
+        std::array<VertexHandle, 8> vs;
         for (int i = 0; i < 8; ++i) {
             vs[i] = graph.addVertex();
         }
         vA = graph.addVertex();
         vB = graph.addVertex();
+        ring.insert(vs.begin(), vs.end());
 
         graph.addFace(vs[0], vA, vs[1]);
         graph.addFace(vA, vs[2], vs[1]);
@@ -168,12 +173,26 @@ struct SimpleGraphFixture {
     }
 };
 
-TEST_CASE_METHOD(SimpleGraphFixture, "halfedge", "[graph]") {
+TEST_CASE_METHOD(SimpleGraphFixture, "get halfedge from vertices", "[graph]") {
     HalfEdgeHandle eh = graph.halfEdge(vA, vB);
     REQUIRE(graph.valid(eh));
     REQUIRE(graph.from(eh) == vA);
     REQUIRE(graph.to(eh) == vB);
 }
+
+
+TEST_CASE_METHOD(SimpleGraphFixture, "get edge from vertices", "[graph]") {
+    EdgeHandle eh1 = graph.edge(vA, vB);
+    REQUIRE(graph.valid(eh1));
+    EdgeHandle eh2 = graph.edge(vB, vA);
+    REQUIRE(graph.valid(eh2));
+    REQUIRE(eh1 == eh2);
+    HalfEdgeHandle heh = graph.halfEdge(eh1);
+    REQUIRE(graph.valid(heh));
+    REQUIRE(graph.from(heh) == vA);
+    REQUIRE(graph.to(heh) == vB);
+}
+
 
 TEST_CASE_METHOD(SimpleGraphFixture, "edge range", "[graph]") {
     Graph::EdgeRange edges = graph.edgeRange();
@@ -188,31 +207,71 @@ TEST_CASE_METHOD(SimpleGraphFixture, "edge range", "[graph]") {
     REQUIRE(visited == 1);
 }
 
-TEST_CASE_METHOD(SimpleGraphFixture, "collapse simple", "[simplify]") {
+TEST_CASE_METHOD(SimpleGraphFixture, "collapse inner edge", "[simplify]") {
     Graph::EdgeRange edges = graph.edgeRange();
-    HalfEdgeHandle collapsible = graph.halfEdge(vA, vB);
+    EdgeHandle collapsible = graph.edge(vA, vB);
 
-    REQUIRE(std::all_of(edges.begin(), edges.end(), [&](EdgeHandle eh) {
-        HalfEdgeHandle heh = graph.halfEdge(eh);
-        if (heh == collapsible) {
-            return graph.collapseAllowed(heh);
+    /*REQUIRE(std::all_of(edges.begin(), edges.end(), [&](EdgeHandle eh) {
+        if (eh == collapsible) {
+            return graph.collapseAllowed(eh);
         } else {
-            return !graph.collapseAllowed(heh);
+            return !graph.collapseAllowed(eh);
         }
-    }));
+    }));*/
 
+    REQUIRE(graph.collapseAllowed(collapsible));
     graph.collapse(collapsible);
 
-    Graph::EdgeRange edges2 = graph.edgeRange();
-    REQUIRE(std::all_of(edges2.begin(), edges2.end(), [&](EdgeHandle eh) {
-        if (!graph.valid(eh)) {
-            // removed
-            return true;
-        } else {
-            HalfEdgeHandle heh = graph.halfEdge(eh);
-            return !graph.collapseAllowed(heh);
+    Vertex::VertexRange vertices = graph.vertexRing(vA);
+    REQUIRE(std::distance(vertices.begin(), vertices.end()) == ring.size());
+    REQUIRE(ring == std::set<VertexHandle>(vertices.begin(), vertices.end()));
+
+    /*  Graph::EdgeRange edges2 = graph.edgeRange();
+      REQUIRE(std::all_of(edges2.begin(), edges2.end(), [&](EdgeHandle eh) {
+          if (!graph.valid(eh)) {
+              // removed
+              return true;
+          } else {
+              return !graph.collapseAllowed(eh);
+          }
+      }));*/
+}
+
+TEST_CASE_METHOD(SimpleGraphFixture, "collapse inner-to-boundary edge", "[simplify]") {
+    for (VertexHandle vh : ring) {
+        EdgeHandle eh1 = graph.edge(vA, vh);
+        if (eh1 != EdgeHandle(-1)) {
+            REQUIRE_FALSE(graph.collapseAllowed(eh1));
         }
-    }));
+        EdgeHandle eh2 = graph.edge(vB, vh);
+        if (eh2 != EdgeHandle(-1)) {
+            REQUIRE_FALSE(graph.collapseAllowed(eh2));
+        }
+    }
+}
+
+TEST_CASE_METHOD(SimpleGraphFixture, "collapse boundary edge", "[simplify]") {
+    VertexHandle v0 = *ring.begin();                 // 0
+    VertexHandle v1 = graph.to(graph.emanating(v0)); // 7
+    REQUIRE(graph.boundary(v0));
+    REQUIRE(graph.boundary(v1));
+    EdgeHandle eh = graph.edge(v0, v1);
+    REQUIRE(graph.boundary(eh));
+    REQUIRE(graph.collapseAllowed(eh));
+
+    graph.collapse(eh);
+    REQUIRE(!graph.valid(v1));
+    REQUIRE(graph.collapseAllowed(graph.edge(vA, vB)));
+    std::set<VertexHandle> ringA;
+    for (VertexHandle vh : graph.vertexRing(vA)) {
+        ringA.insert(vh);
+    }
+    std::set<VertexHandle> ringB;
+    for (VertexHandle vh : graph.vertexRing(vB)) {
+        ringB.insert(vh);
+    }
+    REQUIRE(ringA == std::set<VertexHandle>({ 0_vh, 1_vh, 2_vh, 6_vh, 9_vh }));
+    REQUIRE(ringB == std::set<VertexHandle>({ 2_vh, 3_vh, 4_vh, 5_vh, 6_vh, 8_vh }));
 }
 
 TEST_CASE("collapse simple 2", "[simplify]") {
@@ -244,7 +303,7 @@ TEST_CASE("collapse simple 2", "[simplify]") {
         std::cout << std::endl;
     }
 
-    HalfEdgeHandle eh = graph.halfEdge(vA, vB);
+    EdgeHandle eh = graph.edge(vA, vB);
     graph.collapse(eh);
 
     REQUIRE(graph.valid(vA));
@@ -305,7 +364,7 @@ TEST_CASE("simplify simple", "[simplify]") {
     mesh.addFace(vs[6], vB, vA);
     mesh.addFace(vs[0], vs[7], vA);
 
-    Pvl::HalfEdgeHandle eh = mesh.halfEdge(vA, vB);
+    Pvl::EdgeHandle eh = mesh.edge(vA, vB);
     std::cout << "A-B edge = " << eh << std::endl;
     {
         std::ofstream ofs("base.ply");
@@ -361,12 +420,53 @@ TEST_CASE("simplify bunny", "[simplify]") {
     auto bunny = reader.readMesh();
 
     std::cout << "Simplifying bunny " << std::endl;
-    Pvl::simplify(bunny,
-        Pvl::EdgeLengthCost<Pvl::Vec3f>{},
-        Pvl::MidpointPlacement<Pvl::Vec3f>{},
-        Pvl::EdgeCountStop{ 33000 });
+    Pvl::SimpleDecimator<decltype(bunny)> decimator;
+    Pvl::simplify(bunny, decimator, Pvl::EdgeCountStop{ 32500 });
+    /*for (int cnt : { 6000, 6000, 6000, 6000, 6000, 3000 }) {
+        Pvl::SimpleDecimator<Pvl::Vec3f> decimator;
+        Pvl::simplify(bunny, decimator, Pvl::EdgeCountStop{ cnt });
+    }*/
     {
-        std::ofstream ofs("simplified.ply");
+        std::ofstream ofs("simplified-simple.ply");
+        Pvl::PlyWriter writer(ofs);
+        writer << bunny;
+    }
+}
+
+TEST_CASE("simplify bunny 2", "[simplify]") {
+    std::ifstream ifs("/home/pavel/projects/pvl/data/bunny-fixed.ply");
+    PlyReader reader(ifs);
+    auto bunny = reader.readMesh();
+
+    std::cout << "Simplifying bunny " << std::endl;
+
+    PreventFaceFoldDecorator<QuadricDecimator<TriangleMesh<Vec3f, int>>> decimator(bunny);
+    simplify(bunny, decimator, Pvl::EdgeCountStop{ 32500 });
+
+
+    {
+        std::ofstream ofs("simplified-quadrics.ply");
+        PlyWriter writer(ofs);
+        writer << bunny;
+    }
+}
+
+TEST_CASE("simplify bunny 3", "[simplify]") {
+    std::ifstream ifs("/home/pavel/projects/pvl/data/bunny-fixed.ply");
+    Pvl::PlyReader reader(ifs);
+    auto bunny = reader.readMesh();
+
+    std::cout << "Simplifying bunny " << std::endl;
+
+    Pvl::MemorylessDecimator<decltype(bunny)> decimator; //(bunny);
+    Pvl::simplify(bunny, decimator, Pvl::EdgeCountStop{ 32500 });
+    /*for (int cnt : { 6000, 6000, 6000, 6000, 6000, 3000 }) {
+        Pvl::QuadricDecimator decimator(bunny);
+        Pvl::simplify(bunny, decimator, Pvl::EdgeCountStop{ cnt });
+    }*/
+
+    {
+        std::ofstream ofs("simplified-lt.ply");
         Pvl::PlyWriter writer(ofs);
         writer << bunny;
     }

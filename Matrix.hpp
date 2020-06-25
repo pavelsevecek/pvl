@@ -51,14 +51,6 @@ public:
         return col;
     }
 
-    Vector<T, Rows> transform(const Vector<T, Cols>& v) const {
-        Vector<T, Rows> res;
-        for (int i = 0; i < Rows; ++i) {
-            res[i] = dot(row(i), v);
-        }
-        return res;
-    }
-
     static Matrix null() {
         return Matrix(Vector<T, Cols>(0), Vector<T, Cols>(0), Vector<T, Cols>(0));
     }
@@ -129,7 +121,7 @@ public:
         Matrix<T, Rows, N> result;
         for (int r = 0; r < N; ++r) {
             for (int c = 0; c < Rows; ++c) {
-                result(c, r) = dot(row(r), other.column(c));
+                result(c, r) = dotProd(row(r), other.column(c));
             }
         }
         return result;
@@ -138,6 +130,15 @@ public:
 
 using Mat33f = Matrix<float, 3, 3>;
 using Mat44f = Matrix<float, 4, 4>;
+
+template <typename T, int Cols, int Rows>
+Vector<T, Rows> prod(const Matrix<T, Cols, Rows>& m, const Vector<T, Cols>& v) {
+    Vector<T, Rows> res;
+    for (int i = 0; i < Rows; ++i) {
+        res[i] = dotProd(m.row(i), v);
+    }
+    return res;
+}
 
 template <typename T, int N, int M>
 Matrix<T, N, M> outerProd(const Vector<T, N>& v1, const Vector<T, M>& v2) {
@@ -155,6 +156,17 @@ inline T trace(const Matrix<T, N, N>& m) {
     T tr = 0.;
     for (int i = 0; i < N; ++i) {
         tr += m(i, i);
+    }
+    return tr;
+}
+
+template <typename T, int Cols, int Rows>
+Matrix<T, Rows, Cols> transpose(const Matrix<T, Cols, Rows>& m) {
+    Matrix<T, Rows, Cols> tr;
+    for (int i = 0; i < Cols; ++i) {
+        for (int j = 0; j < Rows; ++j) {
+            tr(j, i) = m(i, j);
+        }
     }
     return tr;
 }

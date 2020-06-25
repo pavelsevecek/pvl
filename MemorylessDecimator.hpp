@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Matrix.hpp"
+#include "Optional.hpp"
 #include "TriangleMesh.hpp"
 
 namespace Pvl {
@@ -12,48 +13,40 @@ static double SQR_SIN_ALPHA = sqr(std::sin(ALPHA));
 static constexpr double MAX_PHI = 90. * M_PI / 180.;
 static double MIN_COS_PHI = std::cos(MAX_PHI);
 
-/*class OnScopeExit : boost::noncopyable {
-    std::function<void()> closure_;
-
-public:
-    OnScopeExit(std::function<void()>&& closure)
-        : closure_(std::move(closure)) {}
-
-    ~OnScopeExit() {
-        closure_();
-    }
-};*/
-
+template <typename Float>
 class LindstromTurkConstraints {
-    Mat33f A_;
-    Vec3f b_;
+    using Vec = Vector<Float, 3>;
+    using Mat = Matrix<Float, 3, 3>;
+
+    Mat A_;
+    Vec b_;
     int n_ = 0;
 
 public:
-    bool addConstraint(const Vec3f& p, const double b) {
+    bool addConstraint(const Vec& p, const Float b) {
         if (full()) {
             return false;
         }
 
         if (isCompatible(p)) {
-            const double distSqr = dot(p, p);
-            const double dist = sqrt(distSqr);
-            const Vec3f pn = p / dist;
-            const double bn = b / dist;
+            const Float distSqr = dotProd(p, p);
+            const Float dist = sqrt(distSqr);
+            const Vec pn = p / dist;
+            const Float bn = b / dist;
 
             A_.row(n_) = pn;
             b_[n_] = bn;
             n_++;
             return true;
         } else {
-            std::cout << "Constraint not compatible" << std::endl;
+            // std::cout << "Constraint not compatible" << std::endl;
             return false;
         }
     }
 
     /// Used for problems formulated as quadratic minimization,
     /// i.e. finds point where gradient Hv + c = 0.
-    int addQuadraticConstraint(const Mat33f& H, const Vec3f& c) {
+    int addQuadraticConstraint(const Mat& H, const Vec& c) {
         int added = 0;
         switch (n_) {
         case 0:
@@ -62,11 +55,11 @@ public:
             added += int(addConstraint(H.row(2), -c[2]));
             break;
         case 1: {
-            const Vec3f r0 = A_.row(0);
-            std::array<double, 3> abs_r0 = {
+            const Vec r0 = A_.row(0);
+            std::array<Float, 3> abs_r0 = {
                 std::abs(r0[0]), std::abs(r0[1]), std::abs(r0[2])
             };
-            Vec3f q0;
+            Vec q0;
             const int maxIdx =
                 int(std::max_element(abs_r0.begin(), abs_r0.end()) - abs_r0.begin());
             switch (maxIdx) {
@@ -80,22 +73,22 @@ public:
                 q0 = { 1., 0., -r0[0] / r0[2] };
                 break;
             }
-            const Vec3f q1 = cross(r0, q0);
-            const Vec3f p0 = H.transform(q0);
-            const Vec3f p1 = H.transform(q1);
-            const double b0 = -dot(q0, c);
-            const double b1 = -dot(q1, c);
+            const Vec q1 = crossProd(r0, q0);
+            const Vec p0 = prod(H, q0);
+            const Vec p1 = prod(H, q1);
+            const Float b0 = -dotProd(q0, c);
+            const Float b1 = -dotProd(q1, c);
 
             added += int(addConstraint(p0, b0));
             added += int(addConstraint(p1, b1));
             break;
         }
         case 2: {
-            const Vec3f r0 = A_.row(0);
-            const Vec3f r1 = A_.row(1);
-            const Vec3f n = cross(r0, r1);
-            const Vec3f p = H.transform(n);
-            const double b = -dot(n, c);
+            const Vec r0 = A_.row(0);
+            const Vec r1 = A_.row(1);
+            const Vec n = crossProd(r0, r1);
+            const Vec p = prod(H, n);
+            const Float b = -dotProd(n, c);
             added += int(addConstraint(p, b));
             break;
         }
@@ -106,9 +99,9 @@ public:
         return added;
     }
 
-    Vec3f getPlacement() const {
-        const Mat33f Ainv = invert(A_);
-        return Ainv.transform(b_);
+    Vec getPlacement() const {
+        const Mat Ainv = invert(A_);
+        return prod(Ainv, b_);
     }
 
     bool full() const {
@@ -121,8 +114,8 @@ public:
 
 private:
     /// Contraint compatibility rules (see Sec. 4.2 in LT paper)
-    bool isCompatible(const Vec3f& p) const {
-        const double distSqr = normSqr(p);
+    bool isCompatible(const Vec& p) const {
+        const Float distSqr = normSqr(p);
         if (distSqr < 1.e-20) {
             return false;
         }
@@ -130,21 +123,21 @@ private:
         case 0:
             return true;
         case 1: {
-            const Vec3f r0 = A_.row(0);
-            const double pr0 = dot(r0, p);
-            const double r0sqr = dot(r0, r0);
-            const double lhs = sqr(pr0);
-            const double rhs = r0sqr * distSqr * SQR_COS_ALPHA;
+            const Vec r0 = A_.row(0);
+            const Float pr0 = dotProd(r0, p);
+            const Float r0sqr = dotProd(r0, r0);
+            const Float lhs = sqr(pr0);
+            const Float rhs = r0sqr * distSqr * SQR_COS_ALPHA;
             return lhs < rhs;
         }
         case 2: {
-            const Vec3f r0 = A_.row(0);
-            const Vec3f r1 = A_.row(1);
-            const Vec3f n = cross(r0, r1);
-            const double np = dot(n, p);
-            const double nsqr = dot(n, n);
-            const double lhs = sqr(np);
-            const double rhs = nsqr * distSqr * SQR_SIN_ALPHA;
+            const Vec r0 = A_.row(0);
+            const Vec r1 = A_.row(1);
+            const Vec n = crossProd(r0, r1);
+            const Float np = dotProd(n, p);
+            const Float nsqr = dotProd(n, n);
+            const Float lhs = sqr(np);
+            const Float rhs = nsqr * distSqr * SQR_SIN_ALPHA;
             return lhs > rhs;
         }
         default:
@@ -153,86 +146,95 @@ private:
     }
 };
 
+template <typename Mesh>
 class MemorylessDecimator {
-    using Mesh = TriangleMesh<Vec3f, int>;
+    using Float = typename Mesh::Float;
+    using Vec = Vector<Float, 3>;
+    using Mat = Matrix<Float, 3, 3>;
+    using Constraints = LindstromTurkConstraints<Float>;
 
 public:
-    float cost(const Mesh& mesh, const Graph::CollapseContext& context) const {
-        const Vec3f p0 = mesh.point(context.remaining);
-        const Vec3f p1 = mesh.point(context.removed);
-        const double lengthSqr = normSqr(p0 - p1);
+    Optional<float> cost(const Mesh& mesh, const Graph::CollapseContext& context) const {
+        const Vec p0 = mesh.point(context.remaining);
+        const Vec p1 = mesh.point(context.removed);
+        const Float lengthSqr = normSqr(p0 - p1);
         std::set<FaceHandle> triangles = getTriangles(mesh, context);
         std::set<VertexHandle> ring = getVertexRing(mesh, context);
         std::set<HalfEdgeHandle> boundary; //= getBoundary(mesh, context);
-        Vec3f p = computePlacement(mesh, triangles, ring, boundary, lengthSqr);
-        /*if (!p || !isCollapseAllowed(ci, *p)) {
-            return Base::ILLEGAL_COLLAPSE;
-        }*/
+        Optional<Vec> dp = computePlacement(mesh, p0, triangles, ring, boundary, lengthSqr);
+        if (dp) {
+            Vec p = p0 + dp.value();
 
-        const double volumeCost = computeVolumeCost(mesh, triangles, p);
-        const double boundaryCost = computeBoundaryCost(mesh, boundary, p);
+            const Float volumeCost = computeVolumeCost(mesh, triangles, p);
+            const Float boundaryCost = computeBoundaryCost(mesh, boundary, p);
 
-        const double totalCost = 0.5 * boundaryCost * lengthSqr + 0.5 * volumeCost;
-        PVL_ASSERT(totalCost >= 0.);
+            const Float totalCost = 0.5 * boundaryCost * lengthSqr + 0.5 * volumeCost;
+            PVL_ASSERT(totalCost >= 0.);
 
-        return totalCost;
+            return totalCost;
+        } else {
+            return NONE;
+        }
     }
 
-    Vec3f placement(const Mesh& mesh, const Graph::CollapseContext& context) const {
-        const Vec3f p0 = mesh.point(context.remaining);
-        const Vec3f p1 = mesh.point(context.removed);
-        const double lengthSqr = normSqr(p0 - p1);
+    Optional<Vec> placement(const Mesh& mesh, const Graph::CollapseContext& context) const {
+        const Vec p0 = mesh.point(context.remaining);
+        const Vec p1 = mesh.point(context.removed);
+        const Float lengthSqr = normSqr(p0 - p1);
         std::set<FaceHandle> faces = getTriangles(mesh, context);
         std::set<VertexHandle> ring = getVertexRing(mesh, context);
         std::set<HalfEdgeHandle> boundary; //= getBoundary(ci);
-        return computePlacement(mesh, faces, ring, boundary, lengthSqr);
+        Optional<Vec> dp = computePlacement(mesh, p0, faces, ring, boundary, lengthSqr);
+        if (dp) {
+            return p0 + dp.value();
+        } else {
+            return NONE;
+        }
     }
 
     void postprocess(const Mesh&, const Graph::CollapseContext&) {}
 
 private:
-    inline Mat33f crossProductMatrixSqr(const Vec3f& p) const {
+    inline Mat crossProductMatrixSqr(const Vec& p) const {
         return {
-            Vec3f(p[1] * p[1] + p[2] * p[2], -p[0] * p[1], -p[0] * p[2]),
-            Vec3f(-p[0] * p[1], p[0] * p[0] + p[2] * p[2], -p[1] * p[2]),
-            Vec3f(-p[0] * p[2], -p[1] * p[2], p[0] * p[0] + p[1] * p[1]),
+            Vec(p[1] * p[1] + p[2] * p[2], -p[0] * p[1], -p[0] * p[2]),
+            Vec(-p[0] * p[1], p[0] * p[0] + p[2] * p[2], -p[1] * p[2]),
+            Vec(-p[0] * p[2], -p[1] * p[2], p[0] * p[0] + p[1] * p[1]),
         };
     }
 
-    Vec3f computePlacement(const Mesh& mesh,
+    Vec computePlacement(const Mesh& mesh,
+        const Vec& pivot,
         const std::set<FaceHandle>& triangles,
         const std::set<VertexHandle>& ring,
         const std::set<HalfEdgeHandle>& boundary,
-        const double lengthSqr) const {
-        LindstromTurkConstraints constraints;
+        const Float lengthSqr) const {
+        Constraints constraints;
 
-        addVolumeAndBoundaryOptimizationConstraint(
-            mesh, constraints, triangles, boundary, lengthSqr);
-        std::cout << "after optimization - " << constraints.count() << " constraints"
-                  << std::endl;
         addBoundaryConstraint(mesh, constraints, boundary);
-        addVolumeConstraint(mesh, constraints, triangles);
-        std::cout << "after volume - " << constraints.count() << " constraints" << std::endl;
-        addShapeConstraint(mesh, constraints, ring);
-        std::cout << "after shape - " << constraints.count() << " constraints" << std::endl;
+        addVolumeConstraint(mesh, pivot, constraints, triangles);
+        addVolumeAndBoundaryOptimizationConstraint(
+            mesh, pivot, constraints, triangles, boundary, lengthSqr);
+        addShapeConstraint(mesh, pivot, constraints, ring);
 
-        Vec3f p = constraints.getPlacement();
-        return p;
+        return constraints.getPlacement();
     }
 
     void addVolumeConstraint(const Mesh& mesh,
-        LindstromTurkConstraints& constraints,
+        const Vec& pivot,
+        Constraints& constraints,
         const std::set<FaceHandle>& faces) const {
         if (constraints.full()) {
             return;
         }
-        Vec3f sumN(0);
-        double sumL = 0.;
+        Vec sumN(0);
+        Float sumL = 0.;
 
         for (FaceHandle fh : faces) {
-            std::array<Vec3f, 3> tri = mesh.triangle(fh);
-            const Vec3f n = cross(tri[1] - tri[0], tri[2] - tri[0]);
-            const double l = dot(cross(tri[0], tri[1]), tri[2]);
+            /// \todo add pivot to triangle(fh) ?
+            std::array<Vec, 3> tri = mesh.triangle(fh);
+            const Vec n = crossProd(tri[1] - tri[0], tri[2] - tri[0]);
+            const Float l = dotProd(crossProd(tri[0] - pivot, tri[1] - pivot), tri[2] - pivot);
             sumN += n;
             sumL += l;
         }
@@ -241,80 +243,82 @@ private:
     }
 
     void addBoundaryConstraint(const Mesh& mesh,
-        LindstromTurkConstraints& constraints,
+        Constraints& constraints,
         const std::set<HalfEdgeHandle>& edges) const {
         if (edges.empty() || constraints.full()) {
             return;
         }
 
-        Vec3f e1(0);
-        Vec3f e2(0);
+        Vec e1(0);
+        Vec e2(0);
 
         for (HalfEdgeHandle eh : edges) {
-            const Vec3f from = mesh.point(mesh.from(eh));
-            const Vec3f to = mesh.point(mesh.to(eh));
+            const Vec from = mesh.point(mesh.from(eh));
+            const Vec to = mesh.point(mesh.to(eh));
             e1 += from - to;
-            e2 += cross(from, to);
+            e2 += crossProd(from, to);
         }
 
-        const Mat33f H = crossProductMatrixSqr(e1);
-        const Vec3f c = cross(e1, e2);
+        const Mat H = crossProductMatrixSqr(e1);
+        const Vec c = crossProd(e1, e2);
 
         constraints.addQuadraticConstraint(H, c);
     }
 
     void addShapeConstraint(const Mesh& mesh,
-        LindstromTurkConstraints& constraints,
+        const Vec& pivot,
+        Constraints& constraints,
         const std::set<VertexHandle>& ring) const {
         if (constraints.full()) {
             return;
         }
-        Mat33f H = Mat33f::identity() * double(ring.size());
-        Vec3f c(0);
+        Mat H = Mat::identity() * Float(ring.size());
+        Vec c(0);
         for (VertexHandle v : ring) {
-            c -= mesh.point(v);
+            c -= (mesh.point(v) - pivot);
         }
         constraints.addQuadraticConstraint(H, c);
     }
 
     void addVolumeAndBoundaryOptimizationConstraint(const Mesh& mesh,
-        LindstromTurkConstraints& constraints,
+        const Vec& pivot,
+        Constraints& constraints,
         const std::set<FaceHandle>& faces,
         const std::set<HalfEdgeHandle>& boundary,
-        const double lengthSqr) const {
+        const Float lengthSqr) const {
         if (constraints.full()) {
             std::cout << "Skipping optimization contraint" << std::endl;
             return;
         }
 
-        Mat33f H = Mat33f::null();
-        Vec3f c(0, 0, 0);
+        Mat H = Mat::null();
+        Vec c(0, 0, 0);
 
         for (FaceHandle face : faces) {
-            std::array<Vec3f, 3> tri = mesh.triangle(face);
-            const Vec3f n = cross(tri[1] - tri[0], tri[2] - tri[0]);
-            const double l = dot(cross(tri[0], tri[1]), tri[2]);
+            std::array<Vec, 3> tri = mesh.triangle(face);
+            const Vec n = crossProd(tri[1] - tri[0], tri[2] - tri[0]);
+            const Float l = dotProd(crossProd(tri[0] - pivot, tri[1] - pivot), tri[2] - pivot);
 
             H += outerProd(n, n);
             c -= n * l;
         }
 
         if (!boundary.empty()) {
-            Mat33f Hb = Mat33f::null();
-            Vec3f cb(0, 0, 0);
+            Mat Hb = Mat::null();
+            Vec cb(0, 0, 0);
             for (HalfEdgeHandle edge : boundary) {
-                const Vec3f from = mesh.point(mesh.from(edge));
-                const Vec3f to = mesh.point(mesh.to(edge));
-                const Vec3f n = cross(from, to);
-                const Vec3f dir = from - to;
+                const Vec from = mesh.point(mesh.from(edge));
+                const Vec to = mesh.point(mesh.to(edge));
+                const Vec n = crossProd(from, to);
+                const Vec dir = from - to;
 
                 Hb += crossProductMatrixSqr(dir);
-                cb += cross(dir, n);
+                cb += crossProd(dir, n);
             }
             // 9 * boundary weight * homogenizing factor
-            const double volumeWeight = 0.5;
-            const double boundaryWeight = 0.5;
-            const double w = 9 * boundaryWeight * lengthSqr;
+            const Float volumeWeight = 0.5;
+            const Float boundaryWeight = 0.5;
+            const Float w = 9 * boundaryWeight * lengthSqr;
 
             H = H * volumeWeight + Hb * w;
             c = c * volumeWeight + cb * w;
@@ -368,33 +372,33 @@ private:
         return ring;
     }
 
-    double computeVolumeCost(const Mesh& mesh,
+    Float computeVolumeCost(const Mesh& mesh,
         const std::set<FaceHandle>& faces,
-        const Vec3f& p) const {
-        double cost = 0.;
+        const Vec& p) const {
+        Float cost = 0.;
         for (FaceHandle face : faces) {
-            std::array<Vec3f, 3> tri = mesh.triangle(face);
+            std::array<Vec, 3> tri = mesh.triangle(face);
 
-            const Vec3f v01 = tri[1] - tri[0];
-            const Vec3f v02 = tri[2] - tri[0];
-            const Vec3f n = cross(v01, v02);
-            const double l = dot(cross(tri[0], tri[1]), tri[2]);
-            cost += sqr(dot(n, p) - l);
+            const Vec v01 = tri[1] - tri[0];
+            const Vec v02 = tri[2] - tri[0];
+            const Vec n = crossProd(v01, v02);
+            const Float l = dotProd(crossProd(tri[0], tri[1]), tri[2]);
+            cost += sqr(dotProd(n, p) - l);
         }
         return cost / 36.;
     }
 
-    double computeBoundaryCost(const Mesh& mesh,
+    Float computeBoundaryCost(const Mesh& mesh,
         const std::set<HalfEdgeHandle>& edges,
-        const Vec3f& p) const {
-        double cost = 0.;
+        const Vec& p) const {
+        Float cost = 0.;
         for (HalfEdgeHandle edge : edges) {
-            Vec3f from = mesh.point(mesh.from(edge));
-            Vec3f to = mesh.point(mesh.to(edge));
+            Vec from = mesh.point(mesh.from(edge));
+            Vec to = mesh.point(mesh.to(edge));
 
-            const Vec3f dir = from - to;
-            const Vec3f c = cross(dir, from - p);
-            cost += dot(c, c);
+            const Vec dir = from - to;
+            const Vec c = crossProd(dir, from - p);
+            cost += dotProd(c, c);
         }
         return cost / 4.;
     }
@@ -416,7 +420,7 @@ private:
                   if (face != ci.fl && face != ci.fr) {
                       typename MeshT::Normal n1 = mesh_.normal(face);
                       typename MeshT::Normal n2 = mesh_.calc_face_normal(face);
-                      const double cosPhi = dot(n1, n2);
+                      const Float cosPhi = dot(n1, n2);
                       if (cosPhi < MIN_COS_PHI) {
                           return false;
                       }

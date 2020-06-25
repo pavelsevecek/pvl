@@ -80,7 +80,7 @@ public:
             if (!mesh.valid(FaceHandle(i))) {
                 continue;
             }
-            auto f = mesh.faceIndices(FaceHandle(i));
+            auto f = mesh.faceVertices(FaceHandle(i));
             out_ << "3 " << f[0] << " " << f[1] << " " << f[2] << "\n";
             validCnt++;
         }

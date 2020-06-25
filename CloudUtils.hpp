@@ -56,9 +56,10 @@ std::vector<Vec3f> estimateNormals(Cloud& cloud) {
         }
         Svd<float> svd = singularValueDecomposition(cov);
 
-        //  std::cout << "singular values = " << svd.S[0] << "," << svd.S[1] << "," << svd.S[2] << "\n";
+        //  std::cout << "singular values = " << svd.S[0] << "," << svd.S[1] << "," << svd.S[2]
+        //  << "\n";
         normals[i] = svd.U.column(argMin(svd.S));
-        normals[i] *= sign(dot(normals[i], cloud[i]));
+        normals[i] *= sign(dotProd(normals[i], cloud[i]));
     }
     return normals;
 }
@@ -111,8 +112,8 @@ void orientNormals(Cloud& cloud, Normals& normals) {
                         continue;
                     }
                     Vec3f e = normalize(cloud[n2] - cloud[n1]);
-                    Vec3f ndash = normals[n2] - 2 * e * dot(e, normals[n2]);
-                    if (dot(normals[n1], ndash) < 0.8) {
+                    Vec3f ndash = normals[n2] - 2 * e * dotProd(e, normals[n2]);
+                    if (dotProd(normals[n1], ndash) < 0.8) {
                         // do not count as neighbours
                         continue;
                     }
@@ -144,8 +145,8 @@ void orientNormals(Cloud& cloud, Normals& normals) {
             for (int j : neighs) {
                 if (indices[j] == 0) {
                     Vec3f e = normalize(cloud[j] - cloud[i]);
-                    Vec3f ndash = normals[j] - 2 * e * dot(e, normals[j]);
-                    votes += sign(dot(normals[i], ndash));
+                    Vec3f ndash = normals[j] - 2 * e * dotProd(e, normals[j]);
+                    votes += sign(dotProd(normals[i], ndash));
                 }
             }
         }

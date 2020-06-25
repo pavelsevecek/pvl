@@ -63,15 +63,12 @@ struct HalfEdge {
     HalfEdge(VertexHandle to)
         : to(to) {
         left = FaceHandle(-1);
+        opposite = HalfEdgeHandle(-1);
     }
 
     bool boundary() const {
         return opposite < 0;
     }
-
-    /* bool removed() const {
-          return left < 0;
-      }*/
 };
 
 struct Vertex {
@@ -87,10 +84,6 @@ struct Vertex {
 
     Vertex(HalfEdgeHandle eh)
         : edge(eh) {}
-
-    /*bool valid() const {
-        return edge >= 0;
-    }*/
 
     struct EndTag {};
 
@@ -187,10 +180,6 @@ struct Face {
     Face(HalfEdgeHandle eh)
         : edge(eh) {}
 
-    /* bool valid() const {
-         return edge >= 0;
-     }*/
-
     struct EndTag {};
 
     class IteratorBase {
@@ -260,6 +249,7 @@ struct Face {
 
 struct Edge {};
 
+// template<typename Vertex, typename HalfEdge, typename Face>
 class Graph {
     friend class Vertex;
     friend class Face;
@@ -317,14 +307,15 @@ public:
         PVL_ASSERT(!boundary(eh));
         return halfEdges_[opposite(eh)].left;
     }
-    HalfEdgeHandle from(VertexHandle vh) const {
+
+    /*HalfEdgeHandle from(VertexHandle vh) const {
         PVL_ASSERT(valid(vh));
         return vertices_[vh].edge;
     }
     HalfEdgeHandle to(VertexHandle vh) const {
         PVL_ASSERT(valid(vh));
         return prev(from(vh));
-    }
+    }*/
     // returns halfedge from vh1 to vh2, or -1 if not exists
     HalfEdgeHandle halfEdge(VertexHandle vh1, VertexHandle vh2) const {
         PVL_ASSERT(valid(vh1) && valid(vh2));
@@ -357,17 +348,35 @@ public:
         return eh;
     }
     EdgeHandle edge(VertexHandle vh1, VertexHandle vh2) const {
+        /*  PVL_ASSERT(valid(vh1) && valid(vh2));
+          if (vh1 > vh2) {
+              std::swap(vh1, vh2);
+          }
+          HalfEdgeHandle eh = halfEdge(vh1, vh2);
+          if (!valid(eh)) {
+              // might still be a boundary edge
+              eh = halfEdge(vh2, vh1);
+              PVL_ASSERT(!valid(eh) || boundary(eh));
+              if (boundary(eh)) {
+                  return edge(eh);
+              }
+          }
+          return edge(eh);*/
         PVL_ASSERT(valid(vh1) && valid(vh2));
-        if (vh1 > vh2) {
-            std::swap(vh1, vh2);
+        for (EdgeHandle eh : edgeRing(vh1)) {
+            HalfEdgeHandle heh = halfEdge(eh);
+            if ((from(heh) == vh1 && to(heh) == vh2) || (to(heh) == vh1 && from(heh) == vh2)) {
+                return eh;
+            }
         }
-        HalfEdgeHandle eh = halfEdge(vh1, vh2);
-        if (!valid(eh)) {
-            // might still be a boundary edge
-            eh = halfEdge(vh2, vh1);
-            PVL_ASSERT(!valid(eh) || boundary(eh));
-        }
-        return edge(eh);
+        return EdgeHandle(-1);
+    }
+    HalfEdgeHandle emanating(VertexHandle vh) const {
+        PVL_ASSERT(valid(vh));
+        return vertices_[vh].edge;
+    }
+    HalfEdgeHandle incoming(VertexHandle vh) const {
+        return prev(emanating(vh));
     }
     bool valid(FaceHandle fh) const {
         PVL_ASSERT(fh < int(faces_.size()));
@@ -534,17 +543,12 @@ public:
             Face::FaceIterator(*this, fh, Face::EndTag{}) };
     }
 
-    std::array<int, 3> faceIndices(FaceHandle fh) const {
-        if (!valid(fh)) {
-            return { 0, 0, 0 };
-        }
-        std::array<int, 3> indices;
-        int i = 0;
-        for (VertexHandle vh : vertexRing(fh)) {
-            indices[i] = vh.index();
-            ++i;
-        }
-        return indices;
+    std::array<VertexHandle, 3> faceVertices(FaceHandle fh) const {
+        PVL_ASSERT(valid(fh));
+        std::array<VertexHandle, 3> vertices;
+        Face::VertexRange ring = vertexRing(fh);
+        std::copy(ring.begin(), ring.end(), vertices.begin());
+        return vertices;
     }
 
     VertexHandle addVertex() {
@@ -639,8 +643,8 @@ public:
                 }
             }
             {
-                HalfEdgeHandle e = from(vh[i]);
-                HalfEdgeHandle e0 = from(vh[i]);
+                HalfEdgeHandle e = vertices_[vh[i]].edge;
+                HalfEdgeHandle e0 = e;
                 if (!boundary(e)) {
                     // find boundary
                     do {
@@ -676,11 +680,19 @@ public:
 
 
     // collapse to to from
-    void collapse(HalfEdgeHandle heh) {
-        PVL_ASSERT(collapseAllowed(heh));
+    void collapse(EdgeHandle edge) {
+        PVL_ASSERT(collapseAllowed(edge));
         // check();
-        CollapseContext context(*this, edge(heh));
-        HalfEdgeHandle oheh = opposite(heh);
+        CollapseContext context(*this, edge);
+
+        HalfEdgeHandle heh = context.edge;
+        bool onesided = boundary(heh);
+        HalfEdgeHandle oheh = !onesided ? opposite(heh) : HalfEdgeHandle(-1);
+
+        VertexHandle v0 = context.remaining;
+        VertexHandle v1 = context.removed;
+        VertexHandle vL = to(next(heh));
+        VertexHandle vR = !onesided ? to(next(oheh)) : VertexHandle(-1);
 
         /*if (vertices_[context.remaining].edge == heh) {
             HalfEdgeHandle l = opposite(prev(heh));
@@ -689,15 +701,45 @@ public:
             vertices_[context.remaining].edge = opposite(prev(heh));
         }*/
 
-        VertexHandle v0 = context.remaining;
-        VertexHandle vl = to(next(heh));
-        VertexHandle vr = to(next(oheh));
-
-        /// \todo move only if necessary?
+        HalfEdgeHandle ev0, evL, evR;
         /// \todo fix boundary case
-        vertices_[v0].edge = opposite(prev(heh));
-        vertices_[vl].edge = next(opposite(prev(heh)));
-        vertices_[vr].edge = opposite(next(oheh));
+        PVL_ASSERT(!boundary(next(heh)));
+        if (vertices_[v1].edge != next(heh) && vertices_[v1].edge != oheh) {
+            // unless the halfedge gets removed, simply use the emanating edge of the vertex to
+            // be removed
+            ev0 = vertices_[v1].edge;
+        } else {
+            PVL_ASSERT(!onesided);
+            ev0 = opposite(prev(heh));
+        }
+        std::cout << "Assigning emanating halfedge for v0 - " << from(ev0) << "-" << to(ev0)
+                  << std::endl;
+        PVL_ASSERT(valid(ev0));
+
+        if (vertices_[vL].edge == prev(heh)) {
+            // move to any other halfedge, it cannot be a boundary
+            PVL_ASSERT(!boundary(prev(heh)));
+            evL = next(opposite(prev(heh)));
+            std::cout << "Assigning emanating halfedge for evL - " << from(evL) << "-"
+                      << to(evL) << std::endl;
+        } else {
+            // keep the edge as it might be boundary
+            evL = vertices_[vL].edge;
+        }
+        PVL_ASSERT(evL);
+
+        if (!onesided) {
+            if (vertices_[vR].edge == prev(oheh)) {
+                PVL_ASSERT(!boundary(prev(oheh)));
+                evR = opposite(next(oheh));
+                std::cout << "Assigning emanating halfedge for evR - " << from(evR) << "-"
+                          << to(evR) << std::endl;
+            } else {
+                evR = vertices_[vR].edge;
+            }
+            PVL_ASSERT(valid(evR));
+        }
+
 
         /*for (HalfEdgeHandle neh : halfEdgeRing(to(heh))) {
             if (to(neh) == from(heh)) {
@@ -707,21 +749,46 @@ public:
         }*/
         HalfEdgeHandle neh = heh;
         do {
-            neh = opposite(next(neh));
+            neh = next(neh);
+            if (boundary(neh)) {
+                PVL_ASSERT(boundary(heh));
+                break;
+            }
+            neh = opposite(neh);
 
             /*std::cout << "Reassigning 'to' for edge " << from(neh) << "-" << to(neh)
                       << " from " << halfEdges_[neh].to << " to " << from(heh) << std::endl;*/
-            halfEdges_[neh].to = from(heh);
+            halfEdges_[neh].to = v0;
         } while (neh != heh);
         /*edges_[prev(eh)].next = next(opposite(next(eh)));
         edges_[prev(opposite(next(eh)))].next = from(eh);
         edges_[next(opposite(prev(oeh)))].next = next(oeh);*/
         connect(opposite(next(heh)), opposite(prev(heh)));
-        connect(opposite(next(oheh)), opposite(prev(oheh)));
+        if (!onesided) {
+            connect(opposite(next(oheh)), opposite(prev(oheh)));
+        }
 
-        vertices_[context.removed].edge = HalfEdgeHandle(-1);
+        vertices_[v1].edge = HalfEdgeHandle(-1);
+        vertices_[v0].edge = ev0;
+        vertices_[vL].edge = evL;
+
         remove(context.left);
-        remove(context.right);
+        if (!onesided) {
+            vertices_[vR].edge = evR;
+            remove(context.right);
+        }
+
+        PVL_ASSERT(valid(v0));
+        PVL_ASSERT(valid(vL));
+        PVL_ASSERT(onesided || valid(vR));
+        PVL_ASSERT(from(vertices_[v0].edge) == v0);
+        PVL_ASSERT(to(vertices_[v0].edge) != v1);
+        PVL_ASSERT(from(vertices_[vL].edge) == vL);
+        PVL_ASSERT(to(vertices_[vL].edge) != v1);
+        if (!onesided) {
+            PVL_ASSERT(from(vertices_[vR].edge) == vR);
+            PVL_ASSERT(to(vertices_[vR].edge) != v1);
+        }
 
         // check();
         /*remove(opposite(next(heh)));
@@ -730,44 +797,58 @@ public:
         // remove(to(eh));
     }
 
-    bool collapseAllowed(HalfEdgeHandle eh) {
-        PVL_ASSERT(valid(eh));
-        if (boundary(eh)) { /// \todo enable boundary collapse
+    bool collapseAllowed(EdgeHandle edge) {
+        PVL_ASSERT(valid(edge));
+        HalfEdgeHandle eh = halfEdge(edge);
+
+        /*if (boundary(eh)) { /// \todo enable boundary collapse
             return false;
-        }
+        }*/
 
         if (boundary(to(eh)) != boundary(from(eh))) {
             // disallow contraction of boundary vertex and inner vertex
             return false;
         }
+        if (boundary(next(eh)) || boundary(prev(eh))) {
+            // disallow contraction of triangle with >1 boundary edge
+            return false;
+        }
         std::set<VertexHandle> ring1;
         for (VertexHandle vh : vertexRing(to(eh))) {
-            // std::cout << "circ " << vh << std::endl;
             if (vh != from(eh)) {
+                // std::cout << "ring1 " << vh << std::endl;
                 ring1.insert(vh);
             }
-            for (HalfEdgeHandle neh : halfEdgeRing(vh)) {
-                if (boundary(neh)) {
-                    return false;
+            /*if (!boundary(eh)) {
+                for (HalfEdgeHandle neh : halfEdgeRing(vh)) {
+                    if (boundary(neh)) {
+                        return false;
+                    }
                 }
-            }
+            }*/
         }
         std::set<VertexHandle> ring2;
         for (VertexHandle vh : vertexRing(from(eh))) {
             if (vh != to(eh)) {
+                // std::cout << "ring2 " << vh << std::endl;
                 ring2.insert(vh);
             }
-            for (HalfEdgeHandle neh : halfEdgeRing(vh)) {
-                if (boundary(neh)) {
-                    return false;
+            /*if (!boundary(eh)) {
+                for (HalfEdgeHandle neh : halfEdgeRing(vh)) {
+                    if (boundary(neh)) {
+                        return false;
+                    }
                 }
-            }
+            }*/
         }
         std::vector<VertexHandle> is;
         std::set_intersection(
             ring1.begin(), ring1.end(), ring2.begin(), ring2.end(), std::back_inserter(is));
-        PVL_ASSERT(is.size() >= 2);
-        return is.size() == 2;
+        VertexHandle vl = to(next(eh));
+        VertexHandle vr = !boundary(eh) ? to(next(opposite(eh))) : VertexHandle(-1);
+        return std::all_of(
+            is.begin(), is.end(), [vl, vr](VertexHandle vh) { return vh == vl || vh == vr; });
+        // return is.size() == 2;
         // if (is.size() != 2) {
         //  return false;
         //}
