@@ -38,7 +38,7 @@ public:
         return points;
     }
 
-    TriangleMesh<Vec3f, int> readMesh() {
+    TriangleMesh<Vec3f> readMesh() {
         std::string line;
         std::size_t numVertices = 0;
         std::size_t numFaces = 0;
@@ -49,7 +49,7 @@ public:
                 break;
             }
         }
-        TriangleMesh<Vec3f, int> mesh;
+        TriangleMesh<Vec3f> mesh;
         std::cout << "Loading mesh with " << numVertices << " vertices and " << numFaces
                   << " faces" << std::endl;
         for (std::size_t i = 0; i < numVertices; ++i) {
@@ -60,12 +60,16 @@ public:
             mesh.addVertex();
             mesh.points.push_back(p);
         }
+        std::cout << "Added " << mesh.numVertices() << " vertices " << std::endl;
         for (std::size_t i = 0; i < numFaces; ++i) {
             std::getline(in_, line);
             std::stringstream ss(line);
             int dummy, a, b, c;
             ss >> dummy >> a >> b >> c;
             mesh.addFace(VertexHandle(a), VertexHandle(b), VertexHandle(c));
+            if (i % 100000 == 99999) {
+                std::cout << "added " << mesh.numFaces() << " faces" << std::endl;
+            }
         }
         return mesh;
     }

@@ -28,7 +28,12 @@ public:
         }
 
         for (FaceHandle fh : mesh.faceRange()) {
-            Point n = mesh.normal(fh);
+            Point n = mesh.areaNormal(fh);
+            const Float area = norm(n);
+            if (area == 0) {
+                continue;
+            }
+            n /= area;
             Point p0 = mesh.triangle(fh)[0]; /// \todo fix
             Plane plane;
             plane[0] = n[0];
@@ -36,9 +41,6 @@ public:
             plane[2] = n[2];
             plane[3] = -dotProd(p0, n);
 
-            /// \todo optimize - compute together with normal
-            const Float area = mesh.area(fh);
-            PVL_ASSERT(area > 0);
 
             Quadric Q = outerProd(plane, plane) * area;
 

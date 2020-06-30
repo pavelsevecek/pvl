@@ -19,8 +19,8 @@
 
 using namespace Pvl;
 /*std::cout << "Test" << std::endl;
-Pvl::KdTree<Pvl::Vec3f> tree;
-std::vector<Pvl::Vec3f> points = {
+KdTree<Vec3f> tree;
+std::vector<Vec3f> points = {
     { 0.f, 0.f, 0.f },
     { 0.f, 0.f, 4.f },
     { 1.f, 0.f, 0.f },
@@ -29,7 +29,7 @@ tree.build(points);
 
 // std::vector<uint32_t> neighs;
 std::array<uint32_t, 3> neighs;
-int n = tree.rangeQuery(Pvl::Vec3f(0.f, 0.f, 0.f), 1.5f, neighs.begin());
+int n = tree.rangeQuery(Vec3f(0.f, 0.f, 0.f), 1.5f, neighs.begin());
 
 std::cout << "Found " << n << " neighs" << std::endl;
 for (auto& n : neighs) {
@@ -37,7 +37,7 @@ for (auto& n : neighs) {
 }
 
 std::stringstream ss;
-Pvl::PlyWriter ply(ss);
+PlyWriter ply(ss);
 for (auto& p : points) {
     ply << p;
 }
@@ -45,37 +45,37 @@ ply.close();
 std::cout << ss.str() << "\n";
 
 std::stringstream iss(ss.str());
-Pvl::PlyReader rd(iss);
-std::vector<Pvl::Vec3f> ps = rd.read();
+PlyReader rd(iss);
+std::vector<Vec3f> ps = rd.read();
 std::cout << "Read points \n";
 for (auto& p : ps) {
     std::cout << p[0] << "," << p[1] << "," << p[2] << "\n";
 }
 
 std::cout << "Grid\n";
-Pvl::UniformGrid<float, 3> grid(Pvl::Vec3i(2, 3, 2));
+UniformGrid<float, 3> grid(Vec3i(2, 3, 2));
 int cntr = 0;
 for (auto& f : grid) {
     std::cout << cntr++ << "-" << f << "\n";
 }*/
 
-/* Pvl::Graph graph;
- Pvl::VertexHandle a = graph.addVertex();
- Pvl::VertexHandle b = graph.addVertex();
- Pvl::VertexHandle c = graph.addVertex();
- Pvl::VertexHandle d = graph.addVertex();
- Pvl::VertexHandle e = graph.addVertex();
- Pvl::VertexHandle f = graph.addVertex();
+/* Graph graph;
+ VertexHandle a = graph.addVertex();
+ VertexHandle b = graph.addVertex();
+ VertexHandle c = graph.addVertex();
+ VertexHandle d = graph.addVertex();
+ VertexHandle e = graph.addVertex();
+ VertexHandle f = graph.addVertex();
 
- Pvl::FaceHandle f1 = graph.addFace(a, b, c);
- Pvl::FaceHandle f2 = graph.addFace(e, f, a);
- Pvl::FaceHandle f3 = graph.addFace(d, e, a);
- Pvl::FaceHandle f4 = graph.addFace(a, c, d);
+ FaceHandle f1 = graph.addFace(a, b, c);
+ FaceHandle f2 = graph.addFace(e, f, a);
+ FaceHandle f3 = graph.addFace(d, e, a);
+ FaceHandle f4 = graph.addFace(a, c, d);
 
  std::cout << "Faces = " << graph.numFaces() << std::endl;
  std::cout << "Vertices = " << graph.numVertices() << std::endl;
 
- for (Pvl::VertexHandle vh : graph.vertexRing(a)) {
+ for (VertexHandle vh : graph.vertexRing(a)) {
      std::cout << " - " << vh.index() << std::endl;
  }*/
 
@@ -208,7 +208,7 @@ TEST_CASE_METHOD(SimpleGraphFixture, "edge range", "[graph]") {
 }
 
 TEST_CASE_METHOD(SimpleGraphFixture, "collapse inner edge", "[simplify]") {
-    Graph::EdgeRange edges = graph.edgeRange();
+    // Graph::EdgeRange edges = graph.edgeRange();
     EdgeHandle collapsible = graph.edge(vA, vB);
 
     /*REQUIRE(std::all_of(edges.begin(), edges.end(), [&](EdgeHandle eh) {
@@ -276,12 +276,12 @@ TEST_CASE_METHOD(SimpleGraphFixture, "collapse boundary edge", "[simplify]") {
 
 TEST_CASE("collapse simple 2", "[simplify]") {
     Graph graph;
-    std::array<Pvl::VertexHandle, 8> vs;
+    std::array<VertexHandle, 8> vs;
     for (int i = 0; i < 8; ++i) {
         vs[i] = graph.addVertex();
     }
-    Pvl::VertexHandle vA = graph.addVertex();
-    Pvl::VertexHandle vB = graph.addVertex();
+    VertexHandle vA = graph.addVertex();
+    VertexHandle vB = graph.addVertex();
 
     graph.addFace(vs[0], vA, vs[1]);
     graph.addFace(vA, vs[2], vs[1]);
@@ -334,24 +334,24 @@ TEST_CASE("collapse simple 2", "[simplify]") {
 }
 
 TEST_CASE("simplify simple", "[simplify]") {
-    Pvl::TriangleMesh<Pvl::Vec3f, std::size_t> mesh;
-    std::array<Pvl::VertexHandle, 8> vs;
+    TriangleMesh<Vec3f> mesh;
+    std::array<VertexHandle, 8> vs;
     for (int i = 0; i < 8; ++i) {
         vs[i] = mesh.addVertex();
     }
-    Pvl::VertexHandle vA = mesh.addVertex();
-    Pvl::VertexHandle vB = mesh.addVertex();
+    VertexHandle vA = mesh.addVertex();
+    VertexHandle vB = mesh.addVertex();
     mesh.points.resize(mesh.numVertices());
-    mesh.points[vA] = Pvl::Vec3f(0, 0, 0);
-    mesh.points[vB] = Pvl::Vec3f(1, 0, 0);
-    mesh.points[vs[0]] = Pvl::Vec3f(-0.5, 0, 0);
-    mesh.points[vs[1]] = Pvl::Vec3f(-0.1, 0.5, 0);
-    mesh.points[vs[2]] = Pvl::Vec3f(0.5, 0.6, 0);
-    mesh.points[vs[3]] = Pvl::Vec3f(1.3, 0.3, 0);
-    mesh.points[vs[4]] = Pvl::Vec3f(1.6, 0, 0);
-    mesh.points[vs[5]] = Pvl::Vec3f(1.3, -0.3, 0);
-    mesh.points[vs[6]] = Pvl::Vec3f(1, -0.8, 0);
-    mesh.points[vs[7]] = Pvl::Vec3f(0, -0.9, 0);
+    mesh.points[vA] = Vec3f(0, 0, 0);
+    mesh.points[vB] = Vec3f(1, 0, 0);
+    mesh.points[vs[0]] = Vec3f(-0.5, 0, 0);
+    mesh.points[vs[1]] = Vec3f(-0.1, 0.5, 0);
+    mesh.points[vs[2]] = Vec3f(0.5, 0.6, 0);
+    mesh.points[vs[3]] = Vec3f(1.3, 0.3, 0);
+    mesh.points[vs[4]] = Vec3f(1.6, 0, 0);
+    mesh.points[vs[5]] = Vec3f(1.3, -0.3, 0);
+    mesh.points[vs[6]] = Vec3f(1, -0.8, 0);
+    mesh.points[vs[7]] = Vec3f(0, -0.9, 0);
 
     mesh.addFace(vs[0], vA, vs[1]);
     mesh.addFace(vA, vs[2], vs[1]);
@@ -364,42 +364,42 @@ TEST_CASE("simplify simple", "[simplify]") {
     mesh.addFace(vs[6], vB, vA);
     mesh.addFace(vs[0], vs[7], vA);
 
-    Pvl::EdgeHandle eh = mesh.edge(vA, vB);
+    EdgeHandle eh = mesh.edge(vA, vB);
     std::cout << "A-B edge = " << eh << std::endl;
     {
         std::ofstream ofs("base.ply");
-        Pvl::PlyWriter writer(ofs);
+        PlyWriter writer(ofs);
         writer << mesh;
     }
     std::cout << "A ring:" << std::endl;
-    for (Pvl::VertexHandle vh : mesh.vertexRing(vA)) {
+    for (VertexHandle vh : mesh.vertexRing(vA)) {
         std::cout << vh << ",";
     }
     std::cout << std::endl;
     std::cout << "B ring:" << std::endl;
-    for (Pvl::VertexHandle vh : mesh.vertexRing(vB)) {
+    for (VertexHandle vh : mesh.vertexRing(vB)) {
         std::cout << vh << ",";
     }
     std::cout << std::endl;
 
-    mesh.collapse(eh, Pvl::Vec3f(0.5, 0., 0.));
+    mesh.collapse(eh, Vec3f(0.5, 0., 0.));
     std::cout << "After collapse A ring:" << std::endl;
     std::cout << "A ring:" << std::endl;
-    for (Pvl::VertexHandle vh : mesh.vertexRing(vA)) {
+    for (VertexHandle vh : mesh.vertexRing(vA)) {
         std::cout << vh << ",";
     }
     std::cout << std::endl;
 
     {
         std::ofstream ofs("simplified.ply");
-        Pvl::PlyWriter writer(ofs);
+        PlyWriter writer(ofs);
         writer << mesh;
     }
 }
 
 TEST_CASE("Test bunny", "[mesh]") {
     std::ifstream ifs("/home/pavel/projects/pvl/data/bunny-fixed.ply");
-    Pvl::PlyReader reader(ifs);
+    PlyReader reader(ifs);
     auto bunny = reader.readMesh();
 
     auto vertices = bunny.vertexRange();
@@ -416,19 +416,19 @@ TEST_CASE("Test bunny", "[mesh]") {
 
 TEST_CASE("simplify bunny", "[simplify]") {
     std::ifstream ifs("/home/pavel/projects/pvl/data/bunny-fixed.ply");
-    Pvl::PlyReader reader(ifs);
+    PlyReader reader(ifs);
     auto bunny = reader.readMesh();
 
     std::cout << "Simplifying bunny " << std::endl;
-    Pvl::SimpleDecimator<decltype(bunny)> decimator;
-    Pvl::simplify(bunny, decimator, Pvl::EdgeCountStop{ 32500 });
+    SimpleDecimator<decltype(bunny)> decimator;
+    simplify(bunny, decimator, EdgeCountStop{ 32500 });
     /*for (int cnt : { 6000, 6000, 6000, 6000, 6000, 3000 }) {
-        Pvl::SimpleDecimator<Pvl::Vec3f> decimator;
-        Pvl::simplify(bunny, decimator, Pvl::EdgeCountStop{ cnt });
+        SimpleDecimator<Vec3f> decimator;
+        simplify(bunny, decimator, EdgeCountStop{ cnt });
     }*/
     {
         std::ofstream ofs("simplified-simple.ply");
-        Pvl::PlyWriter writer(ofs);
+        PlyWriter writer(ofs);
         writer << bunny;
     }
 }
@@ -440,8 +440,8 @@ TEST_CASE("simplify bunny 2", "[simplify]") {
 
     std::cout << "Simplifying bunny " << std::endl;
 
-    PreventFaceFoldDecorator<QuadricDecimator<TriangleMesh<Vec3f, int>>> decimator(bunny);
-    simplify(bunny, decimator, Pvl::EdgeCountStop{ 32500 });
+    PreventFaceFoldDecorator<QuadricDecimator<TriangleMesh<Vec3f>>> decimator(bunny);
+    simplify(bunny, decimator, EdgeCountStop{ 32500 });
 
 
     {
@@ -453,27 +453,46 @@ TEST_CASE("simplify bunny 2", "[simplify]") {
 
 TEST_CASE("simplify bunny 3", "[simplify]") {
     std::ifstream ifs("/home/pavel/projects/pvl/data/bunny-fixed.ply");
-    Pvl::PlyReader reader(ifs);
+    PlyReader reader(ifs);
     auto bunny = reader.readMesh();
 
     std::cout << "Simplifying bunny " << std::endl;
 
-    Pvl::MemorylessDecimator<decltype(bunny)> decimator; //(bunny);
-    Pvl::simplify(bunny, decimator, Pvl::EdgeCountStop{ 32500 });
+    MemorylessDecimator<decltype(bunny)> decimator; //(bunny);
+    simplify(bunny, decimator, EdgeCountStop{ 32500 });
     /*for (int cnt : { 6000, 6000, 6000, 6000, 6000, 3000 }) {
-        Pvl::QuadricDecimator decimator(bunny);
-        Pvl::simplify(bunny, decimator, Pvl::EdgeCountStop{ cnt });
+        QuadricDecimator decimator(bunny);
+        simplify(bunny, decimator, EdgeCountStop{ cnt });
     }*/
 
     {
         std::ofstream ofs("simplified-lt.ply");
-        Pvl::PlyWriter writer(ofs);
+        PlyWriter writer(ofs);
+        writer << bunny;
+    }
+}
+
+
+TEST_CASE("simplify denver", "[simplify]") {
+    std::ifstream ifs("/home/pavel/projects/pvl/data/denver.ply");
+    PlyReader reader(ifs);
+    auto bunny = reader.readMesh();
+
+    std::cout << "Simplifying denver " << std::endl;
+
+    PreventFaceFoldDecorator<QuadricDecimator<TriangleMesh<Vec3f>>> decimator(bunny);
+    simplify(bunny, decimator, FaceCountStop{ bunny.numFaces() - 100000 });
+    std::cout << "Simplification complete" << std::endl;
+
+    {
+        std::ofstream ofs("simplified-denver.ply");
+        PlyWriter writer(ofs);
         writer << bunny;
     }
 }
 /*   std::ifstream ifs("/home/pavel/projects/pvl/data/pc.ply");
-   Pvl::PlyReader reader(ifs);
-   std::vector<Pvl::Vec3f> points;
+   PlyReader reader(ifs);
+   std::vector<Vec3f> points;
    {
        auto all = reader.readCloud();
        for (std::size_t i = 0; i < all.size(); i += 10) {
@@ -482,54 +501,54 @@ TEST_CASE("simplify bunny 3", "[simplify]") {
    }
    std::cout << "Loaded cloud with " << points.size() << " points " << std::endl;
    std::cout << "Estimating normals" << std::endl;
-   std::vector<Pvl::Vec3f> normals = Pvl::estimateNormals(points);
+   std::vector<Vec3f> normals = estimateNormals(points);
 
    {
        std::ofstream ofs("pc-raw.ply");
-       Pvl::PlyWriter writer(ofs);
+       PlyWriter writer(ofs);
        writer.write(points, normals);
    }
 
    std::cout << "Orienting normals" << std::endl;
-   Pvl::orientNormals(points, normals);
+   orientNormals(points, normals);
    {
        std::ofstream ofs("pc-oriented.ply");
-       Pvl::PlyWriter writer(ofs);
+       PlyWriter writer(ofs);
        writer.write(points, normals);
    }
 */
 /*std::ifstream
 ifs("/home/pavel/projects/random/mesh/data/bunny/reconstruction/bun_zipper.ply");
-Pvl::PlyReader reader(ifs);
+PlyReader reader(ifs);
 auto mesh = reader.readMesh();*/
 
 /* for (int i = 0; i < 200; ++i) {
      std::cout << "iter = " << i << std::endl;
-     Pvl::laplacianSmoothing<Pvl::ParallelTag>(mesh);
+     laplacianSmoothing<ParallelTag>(mesh);
  }
  std::ofstream ofs("bunny.ply");
- Pvl::PlyWriter writer(ofs);
+ PlyWriter writer(ofs);
  writer << mesh;
 
  std::ofstream ofs2("boundary.ply");
- Pvl::PlyWriter boun(ofs2);
+ PlyWriter boun(ofs2);
  for (auto vh : mesh.vertexRange()) {
      if (mesh.boundary(vh)) {
          boun << mesh.points[vh];
      }
  }*/
 
-/*std::vector<Pvl::Vec3f> normals = Pvl::estimateNormals(mesh.points);
+/*std::vector<Vec3f> normals = estimateNormals(mesh.points);
 
 {
     std::ofstream ofs("bunny-raw.ply");
-    Pvl::PlyWriter writer(ofs);
+    PlyWriter writer(ofs);
     writer.write(mesh.points, normals);
 }
 
-Pvl::orientNormals(mesh.points, normals);
+orientNormals(mesh.points, normals);
 {
     std::ofstream ofs("bunny-oriented.ply");
-    Pvl::PlyWriter writer(ofs);
+    PlyWriter writer(ofs);
     writer.write(mesh.points, normals);
 */

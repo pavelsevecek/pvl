@@ -80,10 +80,23 @@ public:
     EdgeCountStop(std::size_t count)
         : count_(count) {}
 
-    bool operator()(std::size_t collapsed) const {
-        return collapsed > count_;
+    bool operator()(std::size_t, std::size_t collapsedEdges) const {
+        return collapsedEdges > count_;
     }
 };
+
+class FaceCountStop {
+    std::size_t count_;
+
+public:
+    FaceCountStop(std::size_t count)
+        : count_(count) {}
+
+    bool operator()(std::size_t collapsedFaces, std::size_t) const {
+        return collapsedFaces > count_;
+    }
+};
+
 
 class CollapseQueue {
     using EdgeCost = std::pair<float, EdgeHandle>;
@@ -196,8 +209,8 @@ void savePatch(const TriangleMesh<Vec, Index>& mesh, HalfEdgeHandle eh) {
 }*/
 
 /// \todo add stop to decimator? (cost stop)
-template <typename Vec, typename Index, typename Decimator, typename Stop>
-void simplify(TriangleMesh<Vec, Index>& mesh, Decimator& decimator, const Stop& stop) {
+template <typename Vec, typename Decimator, typename Stop>
+void simplify(TriangleMesh<Vec>& mesh, Decimator& decimator, const Stop& stop) {
     using Float = typename Vec::Float;
 
     CollapseQueue queue;
@@ -208,7 +221,8 @@ void simplify(TriangleMesh<Vec, Index>& mesh, Decimator& decimator, const Stop& 
         }
     }
 
-    std::size_t cnt = 0;
+    std::size_t numCollapsedEdges = 0;
+    std::size_t numCollapsedFaces = 0;
     EdgeHandle collapsedEdge;
     float c;
     while (!queue.empty()) {
@@ -271,7 +285,12 @@ void simplify(TriangleMesh<Vec, Index>& mesh, Decimator& decimator, const Stop& 
                 }
             }
             decimator.postprocess(mesh, context);
-            if (stop(cnt++)) {
+            if (numCollapsedEdges % 10000 == 0) {
+                std::cout << "# " << numCollapsedEdges << " collapsed" << std::endl;
+            }
+            numCollapsedEdges++;
+            numCollapsedFaces += 1 + int(context.right != FaceHandle(-1));
+            if (stop(numCollapsedFaces, numCollapsedEdges)) {
                 return;
             }
         }

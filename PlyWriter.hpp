@@ -69,14 +69,14 @@ public:
         return *this;
     }
 
-    template <typename Vec, typename Index>
-    PlyWriter& operator<<(const TriangleMesh<Vec, Index>& mesh) {
-        for (Index i = 0; i < Index(mesh.numVertices()); ++i) {
+    template <typename Vec>
+    PlyWriter& operator<<(const TriangleMesh<Vec>& mesh) {
+        for (std::uint32_t i = 0; i < mesh.numVertices(); ++i) {
             const Vec& p = mesh.points[i];
             out_ << p[0] << " " << p[1] << " " << p[2] << " 0 0 0\n";
         }
         std::size_t validCnt = 0;
-        for (Index i = 0; i < Index(mesh.numFaces()); ++i) {
+        for (std::uint32_t i = 0; i < mesh.numFaces(); ++i) {
             if (!mesh.valid(FaceHandle(i))) {
                 continue;
             }

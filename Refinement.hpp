@@ -6,8 +6,10 @@
 
 namespace Pvl {
 
-template <typename ConcurrencyTag = SequentialTag, typename Vec, typename Index>
-void laplacianSmoothing(TriangleMesh<Vec, Index>& mesh, bool preserveBoundary = true, float rer = 1.f) {
+template <typename ConcurrencyTag = SequentialTag, typename Vec>
+void laplacianSmoothing(TriangleMesh<Vec>& mesh,
+    bool preserveBoundary = true,
+    float rer = 1.f) {
     std::vector<Vec> laplacian(mesh.numVertices(), Vec(0));
     ParallelForEach<ConcurrencyTag>()(
         mesh.vertexRange(), [&mesh, &laplacian, preserveBoundary](VertexHandle v1) {
@@ -26,8 +28,8 @@ void laplacianSmoothing(TriangleMesh<Vec, Index>& mesh, bool preserveBoundary = 
         });
     std::vector<Vec> biharmonic(mesh.numVertices(), Vec(0));
     if (rer > 0.f) {
-        ParallelForEach<ConcurrencyTag>()(
-            mesh.vertexRange(), [&mesh, &laplacian, &biharmonic, preserveBoundary](VertexHandle v1) {
+        ParallelForEach<ConcurrencyTag>()(mesh.vertexRange(),
+            [&mesh, &laplacian, &biharmonic, preserveBoundary](VertexHandle v1) {
                 if (preserveBoundary && mesh.boundary(v1)) {
                     return;
                 }
@@ -46,7 +48,7 @@ void laplacianSmoothing(TriangleMesh<Vec, Index>& mesh, bool preserveBoundary = 
     }
 
     ParallelFor<ConcurrencyTag>()(
-        Index(0), Index(mesh.numVertices()), [&mesh, &laplacian, &biharmonic, &rer](std::size_t i) {
+        0, mesh.numVertices(), [&mesh, &laplacian, &biharmonic, &rer](std::size_t i) {
             mesh.points[i] += 0.5 * (rer * biharmonic[i] + (1.f - rer) * laplacian[i]);
         });
 }

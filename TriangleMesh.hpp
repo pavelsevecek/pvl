@@ -6,7 +6,7 @@
 
 namespace Pvl {
 
-template <typename Vec, typename Index>
+template <typename Vec>
 class TriangleMesh : public Graph {
 public:
     using Point = Vec;
@@ -30,14 +30,19 @@ public:
         return { p0, p1, p2 };
     }
 
-    Point normal(FaceHandle fh) const {
+    // normal scaled by area
+    Point areaNormal(FaceHandle fh) const {
         std::array<Point, 3> tr = triangle(fh);
-        return normalize(crossProd(tr[1] - tr[0], tr[2] - tr[0]));
+        return 0.5 * crossProd(tr[1] - tr[0], tr[2] - tr[0]);
+    }
+
+    // normalized normal
+    Point normal(FaceHandle fh) const {
+        return normalize(areaNormal(fh));
     }
 
     float area(FaceHandle fh) const {
-        std::array<Vec3f, 3> tr = triangle(fh);
-        return 0.5f * norm(crossProd(tr[1] - tr[0], tr[2] - tr[0]));
+        return norm(areaNormal(fh));
     }
 
     // to -> from

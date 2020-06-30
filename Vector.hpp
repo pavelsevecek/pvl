@@ -106,6 +106,7 @@ public:
     }
 
     Vector operator/(const T f) const {
+        PVL_ASSERT(f != 0);
         Vector res;
         for (int i = 0; i < Dim; ++i) {
             res[i] = values_[i] / f;
@@ -180,7 +181,9 @@ T normL1(const Vector<T, Dim>& v) {
 
 template <typename T, int Dim>
 Vector<T, Dim> normalize(const Vector<T, Dim>& v) {
-    return v / norm(v);
+    T length = norm(v);
+    PVL_ASSERT(length > 0);
+    return v / length;
 }
 
 inline Vec3f crossProd(const Vec3f& v1, const Vec3f& v2) {

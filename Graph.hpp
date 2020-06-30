@@ -14,8 +14,10 @@
 
 namespace Pvl {
 
-template <typename TObject, typename Index = int>
+template <typename TObject>
 class Handle {
+    using Index = std::uint32_t;
+
     Index idx_;
 
 public:
@@ -67,7 +69,7 @@ struct HalfEdge {
     }
 
     bool boundary() const {
-        return opposite < 0;
+        return opposite == HalfEdgeHandle(-1);
     }
 };
 
@@ -288,10 +290,6 @@ public:
         return boundary(vertices_[vh].edge);
     }
     VertexHandle to(HalfEdgeHandle eh) const {
-        if (!valid(eh)) {
-            std::cout << "Invalid he handle " << halfEdges_[halfEdges_[eh].prev].to << "-"
-                      << halfEdges_[eh].to << std::endl;
-        }
         PVL_ASSERT(valid(eh));
         return halfEdges_[eh].to;
     }
@@ -379,19 +377,19 @@ public:
         return prev(emanating(vh));
     }
     bool valid(FaceHandle fh) const {
-        PVL_ASSERT(fh < int(faces_.size()));
+        PVL_ASSERT(fh < faces_.size());
         return fh != FaceHandle(-1) && faces_[fh].edge != HalfEdgeHandle(-1);
     }
     bool valid(HalfEdgeHandle heh) const {
-        PVL_ASSERT(heh < int(halfEdges_.size()));
+        PVL_ASSERT(heh < halfEdges_.size());
         return heh != HalfEdgeHandle(-1) && halfEdges_[heh].left != FaceHandle(-1);
     }
     bool valid(VertexHandle vh) const {
-        PVL_ASSERT(vh < int(vertices_.size()));
+        PVL_ASSERT(vh < vertices_.size());
         return vh != VertexHandle(-1) && vertices_[vh].edge != HalfEdgeHandle(-1);
     }
     bool valid(EdgeHandle eh) const {
-        PVL_ASSERT(eh < int(halfEdges_.size()));
+        PVL_ASSERT(eh < halfEdges_.size());
         HalfEdgeHandle heh(eh.index());
         return valid(heh) && (boundary(heh) || from(heh) < to(heh));
     }
@@ -469,7 +467,7 @@ public:
 
     private:
         bool end() const {
-            return eh_ >= int(graph_.halfEdges_.size());
+            return eh_ >= graph_.halfEdges_.size();
         }
 
         bool dereferencable() const {
@@ -712,28 +710,22 @@ public:
             PVL_ASSERT(!onesided);
             ev0 = opposite(prev(heh));
         }
-        std::cout << "Assigning emanating halfedge for v0 - " << from(ev0) << "-" << to(ev0)
-                  << std::endl;
         PVL_ASSERT(valid(ev0));
 
         if (vertices_[vL].edge == prev(heh)) {
             // move to any other halfedge, it cannot be a boundary
             PVL_ASSERT(!boundary(prev(heh)));
             evL = next(opposite(prev(heh)));
-            std::cout << "Assigning emanating halfedge for evL - " << from(evL) << "-"
-                      << to(evL) << std::endl;
         } else {
             // keep the edge as it might be boundary
             evL = vertices_[vL].edge;
         }
-        PVL_ASSERT(evL);
+        PVL_ASSERT(valid(evL));
 
         if (!onesided) {
             if (vertices_[vR].edge == prev(oheh)) {
                 PVL_ASSERT(!boundary(prev(oheh)));
                 evR = opposite(next(oheh));
-                std::cout << "Assigning emanating halfedge for evR - " << from(evR) << "-"
-                          << to(evR) << std::endl;
             } else {
                 evR = vertices_[vR].edge;
             }
@@ -881,7 +873,7 @@ public:
     }*/
 
     bool removed(HalfEdgeHandle heh) {
-        return halfEdges_[heh].left == -1;
+        return halfEdges_[heh].left == HalfEdgeHandle(-1);
     }
 
     bool removed(EdgeHandle eh) {
