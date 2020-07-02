@@ -14,7 +14,9 @@ class PlyReader {
 
 public:
     PlyReader(std::istream& in)
-        : in_(in) {}
+        : in_(in) {
+        PVL_ASSERT(in);
+    }
 
     std::vector<Vec3f> readCloud() {
         std::string line;
@@ -50,8 +52,8 @@ public:
             }
         }
         TriangleMesh<Vec3f> mesh;
-        std::cout << "Loading mesh with " << numVertices << " vertices and " << numFaces
-                  << " faces" << std::endl;
+        std::cout << "Loading mesh with " << numVertices << " vertices and " << numFaces << " faces"
+                  << std::endl;
         for (std::size_t i = 0; i < numVertices; ++i) {
             std::getline(in_, line);
             std::stringstream ss(line);

@@ -38,7 +38,12 @@ public:
 
     // normalized normal
     Point normal(FaceHandle fh) const {
-        return normalize(areaNormal(fh));
+        Point n = areaNormal(fh);
+        if (norm(n) > 1.e-20) {
+            return normalize(n);
+        } else {
+            return Point(0, 0, 1);
+        }
     }
 
     float area(FaceHandle fh) const {
