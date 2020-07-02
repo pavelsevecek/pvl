@@ -507,38 +507,31 @@ public:
     }
 
     Vertex::HalfEdgeRange halfEdgeRing(VertexHandle vh) const {
-        return { Vertex::HalfEdgeIterator(*this, vh),
-            Vertex::HalfEdgeIterator(*this, vh, Vertex::EndTag{}) };
+        return { Vertex::HalfEdgeIterator(*this, vh), Vertex::HalfEdgeIterator(*this, vh, Vertex::EndTag{}) };
     }
 
     Vertex::EdgeRange edgeRing(VertexHandle vh) const {
-        return { Vertex::EdgeIterator(*this, vh),
-            Vertex::EdgeIterator(*this, vh, Vertex::EndTag{}) };
+        return { Vertex::EdgeIterator(*this, vh), Vertex::EdgeIterator(*this, vh, Vertex::EndTag{}) };
     }
 
     Vertex::VertexRange vertexRing(VertexHandle vh) const {
-        return { Vertex::VertexIterator(*this, vh),
-            Vertex::VertexIterator(*this, vh, Vertex::EndTag{}) };
+        return { Vertex::VertexIterator(*this, vh), Vertex::VertexIterator(*this, vh, Vertex::EndTag{}) };
     }
 
     Vertex::FaceRange faceRing(VertexHandle vh) const {
-        return { Vertex::FaceIterator(*this, vh),
-            Vertex::FaceIterator(*this, vh, Vertex::EndTag{}) };
+        return { Vertex::FaceIterator(*this, vh), Vertex::FaceIterator(*this, vh, Vertex::EndTag{}) };
     }
 
     Face::HalfEdgeRange halfEdgeRing(FaceHandle fh) const {
-        return { Face::HalfEdgeIterator(*this, fh),
-            Face::HalfEdgeIterator(*this, fh, Face::EndTag{}) };
+        return { Face::HalfEdgeIterator(*this, fh), Face::HalfEdgeIterator(*this, fh, Face::EndTag{}) };
     }
 
     Face::VertexRange vertexRing(FaceHandle fh) const {
-        return { Face::VertexIterator(*this, fh),
-            Face::VertexIterator(*this, fh, Face::EndTag{}) };
+        return { Face::VertexIterator(*this, fh), Face::VertexIterator(*this, fh, Face::EndTag{}) };
     }
 
     Face::FaceRange faceRing(FaceHandle fh) const {
-        return { Face::FaceIterator(*this, fh),
-            Face::FaceIterator(*this, fh, Face::EndTag{}) };
+        return { Face::FaceIterator(*this, fh), Face::FaceIterator(*this, fh, Face::EndTag{}) };
     }
 
     std::array<VertexHandle, 3> faceVertices(FaceHandle fh) const {
@@ -589,15 +582,21 @@ public:
         }
 
         for (int i = 0; i < 3; ++i) {
+            int safetyCntr = 0;
             for (HalfEdgeHandle neh : halfEdgeRing(to(eh[i]))) {
                 // std::cout << "Visiting " << neh << "\n";
                 if (to(neh) == from(eh[i])) {
                     if (!halfEdges_[neh].boundary()) {
-                        std::cout << "Complex edge!\n";
+                        std::cout << "Complex edge! when setting opposites" << std::endl;
                         break;
                     }
                     halfEdges_[neh].opposite = eh[i];
                     halfEdges_[eh[i]].opposite = neh;
+                    break;
+                }
+
+                if (++safetyCntr > 50) {
+                    std::cout << "Iterated 50times without finding the end, terminating" << std::endl;
                     break;
                 }
             }
@@ -605,14 +604,21 @@ public:
             if (halfEdges_[eh[i]].boundary()) {
                 // opposite not found by circulation
                 std::set<HalfEdgeHandle> removed;
+                int safetyCntr = 0;
+
                 for (HalfEdgeHandle neh : boundaryEdges_[to(eh[i])]) {
                     if (to(neh) == from(eh[i])) {
                         if (!halfEdges_[neh].boundary()) {
-                            std::cout << "Complex edge!\n";
+                            std::cout << "Complex edge! when finding boundary" << std::endl;
+                            break;
                         }
                         halfEdges_[neh].opposite = eh[i];
                         halfEdges_[eh[i]].opposite = neh;
                         removed.insert(neh);
+                        break;
+                    }
+                    if (++safetyCntr > 50) {
+                        std::cout << "Iterated 50times without finding the end, terminating" << std::endl;
                         break;
                     }
                 }
@@ -834,12 +840,10 @@ public:
             }*/
         }
         std::vector<VertexHandle> is;
-        std::set_intersection(
-            ring1.begin(), ring1.end(), ring2.begin(), ring2.end(), std::back_inserter(is));
+        std::set_intersection(ring1.begin(), ring1.end(), ring2.begin(), ring2.end(), std::back_inserter(is));
         VertexHandle vl = to(next(eh));
         VertexHandle vr = !boundary(eh) ? to(next(opposite(eh))) : VertexHandle(-1);
-        return std::all_of(
-            is.begin(), is.end(), [vl, vr](VertexHandle vh) { return vh == vl || vh == vr; });
+        return std::all_of(is.begin(), is.end(), [vl, vr](VertexHandle vh) { return vh == vl || vh == vr; });
         // return is.size() == 2;
         // if (is.size() != 2) {
         //  return false;
@@ -911,26 +915,22 @@ private:
 
             for (VertexHandle nvh : vertexRing(vh)) {
                 if (!valid(nvh)) {
-                    std::cout << "vertex " << vh << " connected to invalid vertex " << nvh
-                              << std::endl;
+                    std::cout << "vertex " << vh << " connected to invalid vertex " << nvh << std::endl;
                 }
             }
             for (HalfEdgeHandle heh : halfEdgeRing(vh)) {
                 if (!valid(heh)) {
-                    std::cout << "vertex " << vh << " connected to invalid halfedge " << heh
-                              << std::endl;
+                    std::cout << "vertex " << vh << " connected to invalid halfedge " << heh << std::endl;
                 }
             }
             for (FaceHandle fh : faceRing(vh)) {
                 if (!valid(fh)) {
-                    std::cout << "vertex " << vh << " connected to invalid face " << fh
-                              << std::endl;
+                    std::cout << "vertex " << vh << " connected to invalid face " << fh << std::endl;
                 }
             }
             for (EdgeHandle eh : edgeRing(vh)) {
                 if (!valid(eh)) {
-                    std::cout << "vertex " << vh << " connected to invalid edge " << eh
-                              << std::endl;
+                    std::cout << "vertex " << vh << " connected to invalid edge " << eh << std::endl;
                 }
             }
         }
