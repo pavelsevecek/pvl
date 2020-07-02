@@ -58,6 +58,11 @@ public:
         lower_ = min(lower_, p);
         upper_ = max(upper_, p);
     }
+
+    void extend(const BoundingBox& b) {
+        extend(b.lower());
+        extend(b.upper());
+    }
 };
 
 using Box3f = BoundingBox<Vec3f>;

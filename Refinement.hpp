@@ -39,7 +39,6 @@ void laplacianSmoothing(TriangleMesh<Vec>& mesh, bool preserveBoundary = true, f
                     ++neighCnt;
                 }
                 if (neighCnt > 0) {
-                    float norm = 1.; // (1. + )
                     biharmonic[v1] = -delta / neighCnt + laplacian[v1];
                 }
             });
