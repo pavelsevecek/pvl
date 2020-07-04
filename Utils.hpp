@@ -78,7 +78,8 @@ class ProgressMeter {
 
 public:
     ProgressMeter(int target, Progress&& func)
-        : func_(std::move(func)) {
+        : func_(std::move(func))
+        , counter_(0) {
         step_ = std::max(target / 100, 10);
         next_ = step_;
         target_ = target;
