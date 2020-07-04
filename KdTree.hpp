@@ -162,13 +162,13 @@ class KdTree : public Noncopyable {
 private:
     struct {
         /// Maximal number of particles in the leaf node
-        int leafSize;
+        Index leafSize;
 
         /// Maximal depth for which the build is parallelized
-        int maxParallelDepth;
+        Index maxParallelDepth;
     } config_;
 
-    using Float = typename Vec::Type;
+    using Float = typename Vec::Float;
     static constexpr int Dim = Vec::size();
     using Box = BoundingBox<Vector<Float, Dim>>;
     using InnerNode = KdInnerNode<Float, Index, Dim>;

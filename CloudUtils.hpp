@@ -4,6 +4,7 @@
 #include "Matrix.hpp"
 #include "PlyWriter.hpp"
 #include "Svd.hpp"
+#include "utility"
 #include <iostream>
 
 namespace Pvl {
@@ -28,13 +29,22 @@ Vec3f centroid(const Cloud& cloud) {
     return pos / count;
 }
 
-template <typename Cloud>
+template <typename ConcurrencyTag = SequentialTag, typename Cloud>
 std::vector<Vec3f> estimateNormals(Cloud& cloud) {
+    return estimateNormals<ConcurrencyTag>(cloud, [](float) { return false; });
+}
+
+template <typename ConcurrencyTag = SequentialTag, typename Cloud, typename Progress>
+std::vector<Vec3f> estimateNormals(Cloud& cloud, const Progress& progress) {
     KdTree<Vec3f> tree;
     tree.build(cloud);
     std::vector<Vec3f> normals(cloud.size());
-
-    for (std::size_t i = 0; i < cloud.size(); ++i) {
+    auto meter = makeProgressMeter(cloud.size(), progress);
+    std::atomic<bool> wasCancelled{ false };
+    ParallelFor<ConcurrencyTag>()(std::size_t(0), cloud.size(), [&](std::size_t i) {
+        if (wasCancelled) {
+            return;
+        }
         const Vec3f& p = cloud[i];
         float radius = 0.01;
         std::vector<int> neighs;
@@ -56,12 +66,20 @@ std::vector<Vec3f> estimateNormals(Cloud& cloud) {
         }
         Svd<float> svd = singularValueDecomposition(cov);
 
-        //  std::cout << "singular values = " << svd.S[0] << "," << svd.S[1] << "," << svd.S[2]
-        //  << "\n";
         normals[i] = svd.U.column(argMin(svd.S));
-        normals[i] *= sign(dotProd(normals[i], cloud[i]));
+
+        // initially orient upwards
+        normals[i] *= sign(normals[i][2]);
+        if (meter.inc()) {
+            wasCancelled = true;
+            return;
+        }
+    });
+    if (!wasCancelled) {
+        return normals;
+    } else {
+        return {};
     }
-    return normals;
 }
 
 Vector<float, 6> join(Vec3f v, Vec3f n) {
