@@ -128,6 +128,7 @@ public:
     }
 };
 
+using Mat22f = Matrix<float, 2, 2>;
 using Mat33f = Matrix<float, 3, 3>;
 using Mat44f = Matrix<float, 4, 4>;
 
@@ -169,6 +170,16 @@ Matrix<T, Rows, Cols> transpose(const Matrix<T, Cols, Rows>& m) {
         }
     }
     return tr;
+}
+
+inline Mat22f invert(const Mat22f& m) {
+    float invdet = 1.f / (m(0, 0) * m(1, 1) - m(0, 1) * m(1, 0));
+    Mat22f minv;
+    minv(0, 0) = m(1, 1) * invdet;
+    minv(0, 1) = -m(0, 1) * invdet;
+    minv(1, 0) = -m(1, 0) * invdet;
+    minv(1, 1) = m(0, 0) * invdet;
+    return minv;
 }
 
 inline Mat33f invert(const Mat33f& m) {

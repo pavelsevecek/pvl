@@ -61,7 +61,7 @@ public:
 
     UniformGrid(const Idxs& dims)
         : dims_(dims) {
-        data_.resize(voxelCount());
+        data_.resize(voxelCount(), Object());
     }
 
     Object& operator()(const Idxs& idxs) {
@@ -80,6 +80,10 @@ public:
         return cnt;
     }
 
+    Idxs dimension() const {
+        return dims_;
+    }
+
     GridIterator<Object, Dim> begin() {
         return { data_.data(), 0, dims_ };
     }
@@ -94,6 +98,10 @@ public:
 
     GridIterator<const Object, Dim> end() const {
         return { data_.data() + data_.size(), 0, dims_ };
+    }
+
+    Object* data() {
+        return data_.data();
     }
 
 private:
