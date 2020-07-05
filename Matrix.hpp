@@ -317,9 +317,10 @@ inline Mat33f getRotationMatrix(const Vec3f& axis, const float angle) {
 
 // (0,0,1) -> dir rotator
 inline Mat33f getRotatorTo(const Vec3f& dir) {
-    const Vec3f up(0, 0, 1);
-    if (dir == up) {
-        return Mat33f::identity();
+    Vec3f up(0, 0, 1);
+    const float dot = dotProd(dir, up);
+    if (fabs(dot) > 0.999999f) {
+        up = Vec3f(1, 0, 0);
     }
 
     const Vec3f x = normalize(crossProd(up, dir));

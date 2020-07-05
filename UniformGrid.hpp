@@ -57,7 +57,8 @@ public:
     Idxs dims_;
 
 public:
-    UniformGrid() = default;
+    UniformGrid()
+        : dims_(0) {}
 
     UniformGrid(const Idxs& dims)
         : dims_(dims) {
