@@ -21,14 +21,11 @@ public:
         }
     }
 
-    Vector(const T x, const T y) /// \todo
-        : values_{ x, y } {}
-
-    Vector(const T x, const T y, const T z)
-        : values_{ x, y, z } {}
-
-    Vector(const T x, const T y, const T z, const T w)
-        : values_{ x, y, z, w } {}
+    template <typename TFirst, typename TSecond, typename... TRest>
+    Vector(const TFirst first, const TSecond second, const TRest... rest)
+        : values_{ T(first), T(second), T(rest)... } {
+        static_assert(sizeof...(TRest) == Dim - 2, "Incorrect number of vector components");
+    }
 
     T& operator[](const int idx) {
         PVL_ASSERT(unsigned(idx) < unsigned(Dim), idx, Dim);
@@ -187,9 +184,7 @@ Vector<T, Dim> normalize(const Vector<T, Dim>& v) {
 }
 
 inline Vec3f crossProd(const Vec3f& v1, const Vec3f& v2) {
-    return Vec3f(v1[1] * v2[2] - v1[2] * v2[1],
-        v1[2] * v2[0] - v1[0] * v2[2],
-        v1[0] * v2[1] - v1[1] * v2[0]);
+    return Vec3f(v1[1] * v2[2] - v1[2] * v2[1], v1[2] * v2[0] - v1[0] * v2[2], v1[0] * v2[1] - v1[1] * v2[0]);
 }
 
 template <typename T1, typename T2, int Dim>

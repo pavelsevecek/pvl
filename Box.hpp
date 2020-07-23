@@ -65,6 +65,7 @@ public:
     }
 };
 
+using Box2f = BoundingBox<Vec2f>;
 using Box3f = BoundingBox<Vec3f>;
 
 /// \brief Splits the box along given coordinate.
@@ -80,6 +81,17 @@ std::pair<Box, Box> splitBox(const Box& box, const int dim, const T x) {
     b1.upper()[dim] = x;
     b2.lower()[dim] = x;
     return std::make_pair(b1, b2);
+}
+
+template <typename Box>
+bool overlaps(const Box& box1, const Box& box2) {
+    constexpr int Dim = Box::Vector::size();
+    for (int i = 0; i < Dim; ++i) {
+        if (box1.lower()[i] > box2.upper()[i] || box2.lower()[i] > box1.upper()[i]) {
+            return false;
+        }
+    }
+    return true;
 }
 
 
