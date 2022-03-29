@@ -1,5 +1,7 @@
 #pragma once
 
+#include <limits>
+
 #include "Vector.hpp"
 
 namespace Pvl {

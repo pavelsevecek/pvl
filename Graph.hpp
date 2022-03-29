@@ -42,10 +42,10 @@ public:
     }
 };
 
-class HalfEdge;
-class Vertex;
-class Face;
-class Edge;
+struct HalfEdge;
+struct Vertex;
+struct Face;
+struct Edge;
 class Graph;
 
 using HalfEdgeHandle = Handle<HalfEdge>;
@@ -253,8 +253,8 @@ struct Edge {};
 
 // template<typename Vertex, typename HalfEdge, typename Face>
 class Graph {
-    friend class Vertex;
-    friend class Face;
+    friend struct Vertex;
+    friend struct Face;
 
     std::vector<Vertex> vertices_;
     std::vector<Face> faces_;
