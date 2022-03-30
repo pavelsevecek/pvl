@@ -146,7 +146,7 @@ void orientNormals(Cloud& cloud, Normals& normals) {
     }
 
     // declare component 0 as correct
-    for (int c = 1; c < componentIdx; ++c) {
+    for (std::size_t c = 1; c < componentIdx; ++c) {
         int votes = 0;
         for (std::size_t i = 0; i < cloud.size(); ++i) {
             if (indices[i] != c) {
