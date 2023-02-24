@@ -119,19 +119,19 @@ public:
         return Dim;
     }
 
-    T* begin() {
+    auto begin() {
         return values_.begin();
     }
 
-    T* end() {
+    auto end() {
         return values_.end();
     }
 
-    const T* begin() const {
+    const auto begin() const {
         return values_.begin();
     }
 
-    const T* end() const {
+    const auto end() const {
         return values_.end();
     }
 
