@@ -1,5 +1,14 @@
 #pragma once
-#include <tbb/tbb.h>
+#ifdef emit
+#undef emit
+#define mpcv_redefine_emit
+#endif
+#include <tbb/parallel_for.h>
+#include <tbb/parallel_for_each.h>
+#ifdef mpcv_redefine_emit
+#define emit
+#undef mpcv_redefine_emit
+#endif
 
 namespace Pvl {
 
@@ -70,11 +79,11 @@ struct ParallelForEach<ParallelTag> {
 template <typename Progress>
 class ProgressMeter {
     Progress func_;
-    tbb::atomic<int> counter_;
+    std::atomic<int> counter_;
     int target_;
     int step_;
     int next_;
-    tbb::tbb_thread::id callingThreadId_;
+    std::thread::id callingThreadId_;
 
 public:
     ProgressMeter(int target, Progress&& func)
@@ -83,12 +92,12 @@ public:
         step_ = std::max(target / 100, 10);
         next_ = step_;
         target_ = target;
-        callingThreadId_ = tbb::this_tbb_thread::get_id();
+        callingThreadId_ = std::this_thread::get_id();
     }
 
     bool inc() {
         counter_++;
-        if (tbb::this_tbb_thread::get_id() == callingThreadId_ && counter_ > next_) {
+        if (std::this_thread::get_id() == callingThreadId_ && counter_ > next_) {
             float value = float(counter_) / target_ * 100;
             next_ += step_;
             return func_(value);
